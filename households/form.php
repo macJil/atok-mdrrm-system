@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/household_function.php';
+require_once __DIR__ . '/../map/boundary.php';
 $editing = isset($_GET['id']);
 $form = ['barangay'=>'', 'address'=>'', 'emergency_name'=>'', 'emergency_phone'=>'', 'registry_reason'=>'Monitored', 'vulnerability'=>'Not assessed', 'hazard_notes'=>''];
 if ($editing) {
@@ -19,13 +20,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!preg_match('/^(?:09[0-9]{9}|[+]639[0-9]{9})$/D', $form['emergency_phone'])) {
         $error = 'Enter a mobile number starting with 09 or +639 followed by nine digits.';
     }
+    $lat = trim(posted('latitude'));
+    $lng = trim(posted('longitude'));
+    $problems = locationErrors($form['address'], $lat, $lng);
+    if ($error === '' && $problems) {
+        $error = $problems[0];
+    }
+    $lat = $lat === '' ? null : $lat;
+    $lng = $lng === '' ? null : $lng;
     if ($error === '') {
         $values = array_values($form);
+        $values[] = $lat;
+        $values[] = $lng;
         if ($editing) {
-            $query = $pdo->prepare('UPDATE households SET barangay=?,address=?,emergency_name=?,emergency_phone=?,registry_reason=?,vulnerability=?,hazard_notes=? WHERE id=?');
+            $query = $pdo->prepare('UPDATE households SET barangay=?,address=?,emergency_name=?,emergency_phone=?,registry_reason=?,vulnerability=?,hazard_notes=?,latitude=?,longitude=? WHERE id=?');
             $values[] = $id;
         } else {
-            $query = $pdo->prepare('INSERT INTO households(barangay,address,emergency_name,emergency_phone,registry_reason,vulnerability,hazard_notes) VALUES(?,?,?,?,?,?,?)');
+            $query = $pdo->prepare('INSERT INTO households(barangay,address,emergency_name,emergency_phone,registry_reason,vulnerability,hazard_notes,latitude,longitude) VALUES(?,?,?,?,?,?,?,?,?)');
         }
         $query->execute($values);
         if (!$editing) {
@@ -49,9 +60,15 @@ require __DIR__ . '/../includes/header.php';
             <?php endforeach; ?>
         </select>
     </label>
-    <label class="d-block mb-3">Written address or nearby landmark
-        <input class="form-control" name="address" maxlength="255" required value="<?= h($form['address']) ?>">
-    </label>
+    <?php
+    $pickerKind = 'households';
+    $point = $form;
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $point['latitude'] = posted('latitude');
+        $point['longitude'] = posted('longitude');
+    }
+    require __DIR__ . '/../map/picker.php';
+    ?>
     <label class="d-block mb-3">Emergency contact name
         <input class="form-control" name="emergency_name" maxlength="100" required value="<?= h($form['emergency_name']) ?>">
     </label>

@@ -16,7 +16,7 @@ The first implementation milestone is login, household CRUD and staff-led reside
 
 1. Place the folder in htdocs and start Apache and MySQL.
 2. Set host, port, username, password and base URL directly in config.php for your machine. Keep private settings local.
-3. Import database/foundation.sql and then database/announcements.sql before opening the login page. Existing Phase 1 databases can run the same script to add the accounts table.
+3. For a fresh database, import the files in database/ in this order: foundation.sql, households.sql, incidents.sql, response.sql, evacuation.sql, relief_inventory.sql, relief_distribution.sql, announcements.sql, then map.sql. On an existing installation, apply only the missing stages.
 4. In a private terminal run `php database/initialize_staff.php your-office-email`. Give the one-time displayed password to the staff member privately.
 5. Visit the project root and change the temporary password. Staff can create other staff accounts, change account status, and issue new temporary passwords after identity verification. Staff enroll residents from household member details.
 
@@ -30,7 +30,7 @@ After importing foundation.sql, import database/households.sql in the rebuild da
 
 Run database/incidents.sql once after households.sql. Enrollment can now record the resident’s own mobile number. Older accounts can enter a contact number when reporting. Report-specific changes stay with the report. Staff use phone or walk-in intake. Each report receives a reference and a submission timestamp.
 
-The optional image is validated using PHP fileinfo and image metadata. One JPEG, PNG or WebP of up to 2 MiB is stored privately in MySQL with its incident in one transaction. The report, image and print-format page share the same staff/owner permission check. Set upload_max_filesize to at least 2M and post_max_size above that limit. Dashboard status updates and optional map selection belong to later phases.
+The optional image is validated using PHP fileinfo and image metadata. One JPEG, PNG or WebP of up to 2 MiB is stored privately in MySQL with its incident in one transaction. The report, image and print-format page share the same staff/owner permission check. Set upload_max_filesize to at least 2M and post_max_size above that limit.
 
 ## Emergency response
 
@@ -55,3 +55,11 @@ Import database/relief_distribution.sql after households.sql and relief_inventor
 ## Announcements
 
 For an existing installation, import database/announcements.sql before updating the website. From the staff dashboard choose Manage announcements. Save a draft or publish a notice to residents. The optional login-page checkbox starts unchecked. The login page shows the three most recently published public notices below sign-in. Withdrawing a notice removes it from both audiences and clears public display for its next publication.
+
+## Dashboards, disaster summaries and maps
+
+Import database/map.sql once after all module schemas, before opening the updated site. Open Manage relief points to edit an existing point or mark it inactive. Existing records keep their written locations and start without pins. Household details now include deletion confirmation. Incident details also serve their print copy; image access is a separate binary response.
+
+The staff dashboard starts with five pending reports in oldest-first order. Barangay selection applies to incidents, centers and affected households. Goods needing attention always use the municipal stock balance. The disaster summary dates apply to incident reporting, evacuation arrivals and goods issued; household registry status and people staying now describe the current records.
+
+The shared picker supports written-only locations and optional pin selection. The bundled approximate outline comes from the previous project's Atok extract (license in assets/data). Confirm it with the municipality before operational use. Current location requires localhost or HTTPS and browser permission. Tiles and address suggestions use external services; a written address works offline when the local site is available. The community map includes located verified/responding/resolved incidents, open centers and active distribution points. Household pins are staff-only.

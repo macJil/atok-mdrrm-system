@@ -1,12 +1,24 @@
 <?php
 require __DIR__ . '/../includes/session.php';
+require_once __DIR__ . '/../map/boundary.php';
 requireRole('staff');
 $areas = ['Abiang','Caliking','Cattubo','Naguey','Paoay','Pasdong','Poblacion','Topdac'];
 $error = '';
 $household = posted('household');
-$point = posted('point');
+$pointId = posted('point');
 $receiver = trim(posted('receiver'));
 $quantities = $_POST['quantities'] ?? [];
+$editPoint = filter_input(INPUT_GET, 'edit_point', FILTER_VALIDATE_INT);
+$pointForm = ['name'=>'', 'address'=>'', 'barangay'=>'', 'active'=>1];
+if (isset($_GET['edit_point'])) {
+    $query = $pdo->prepare('SELECT * FROM relief_points WHERE id=?');
+    $query->execute([$editPoint]);
+    $pointForm = $query->fetch();
+    if (!$pointForm) {
+        http_response_code(404);
+        exit('Relief point not found.');
+    }
+}
 $key = bin2hex(random_bytes(16));
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
@@ -14,18 +26,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name = trim(posted('name'));
             $address = trim(posted('address'));
             $area = posted('barangay');
+            $active = posted('inactive') === 'yes' ? 0 : 1;
+            $pointForm = ['name'=>$name, 'address'=>$address, 'barangay'=>$area, 'active'=>$active,
+                'latitude'=>posted('latitude'), 'longitude'=>posted('longitude')];
             if ($name === '' || mb_strlen($name) > 100 || $address === '' || mb_strlen($address) > 255 || !in_array($area,$areas,true)) {
                 throw new DomainException('Enter a point name, barangay and written address.');
             }
-            $query = $pdo->prepare('INSERT INTO relief_points(name,barangay,address) VALUES(?,?,?)');
-            $query->execute([$name,$area,$address]);
+            $lat = trim(posted('latitude'));
+            $lng = trim(posted('longitude'));
+            $problems = locationErrors($address, $lat, $lng);
+            if ($problems) {
+                throw new DomainException($problems[0]);
+            }
+            $lat = $lat === '' ? null : $lat;
+            $lng = $lng === '' ? null : $lng;
+            $values = [$name,$area,$address,$lat,$lng,$active];
+            if ($editPoint) {
+                $query = $pdo->prepare('UPDATE relief_points SET name=?,barangay=?,address=?,latitude=?,longitude=?,active=? WHERE id=?');
+                $values[] = $editPoint;
+            } else {
+                $query = $pdo->prepare('INSERT INTO relief_points(name,barangay,address,latitude,longitude,active) VALUES(?,?,?,?,?,?)');
+            }
+            $query->execute($values);
             go('relief_distribution/index.php');
         }
         if (posted('action') !== 'distribute' || !ctype_xdigit(posted('submission_key')) || strlen(posted('submission_key')) !== 32) {
             throw new DomainException('Reopen the distribution form and try again.');
         }
         $key = posted('submission_key');
-        if (!ctype_digit($household) || !ctype_digit($point) || $receiver === '' || mb_strlen($receiver) > 100) {
+        if (!ctype_digit($household) || !ctype_digit($pointId) || $receiver === '' || mb_strlen($receiver) > 100) {
             throw new DomainException('Choose a household and relief point, and enter the actual receiver.');
         }
         $lines = [];
@@ -51,8 +80,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!in_array($query->fetchColumn(),['Affected','Monitored and affected'],true)) {
             throw new DomainException('Select a registered affected household.');
         }
+        $query = $pdo->prepare('SELECT id FROM relief_points WHERE id=? AND active=1 FOR UPDATE');
+        $query->execute([$pointId]);
+        if (!$query->fetchColumn()) {
+            throw new DomainException('Choose an active distribution point.');
+        }
         $query = $pdo->prepare('INSERT INTO relief_distributions(household_id,point_id,receiver,staff_id,submission_key) VALUES(?,?,?,?,?)');
-        $query->execute([$household,$point,$receiver,$user['id'],$key]);
+        $query->execute([$household,$pointId,$receiver,$user['id'],$key]);
         $distribution = $pdo->lastInsertId();
         $stock = $pdo->prepare('SELECT name,balance FROM relief_goods WHERE id=? FOR UPDATE');
         $deduct = $pdo->prepare('UPDATE relief_goods SET balance=balance-? WHERE id=?');
@@ -113,16 +147,30 @@ require __DIR__ . '/../includes/header.php';
     <?php if ($error): ?><p role="alert"><?= htmlspecialchars($error) ?></p><?php endif; ?>
     <a href="#history" class="btn btn-outline-secondary">Distribution history</a>
     <a href="../relief_inventory/index.php" class="btn btn-outline-secondary">Municipal inventory</a>
-    <details class="my-3" <?= posted('action') === 'add_point' ? 'open' : '' ?>>
-        <summary>Add relief point</summary>
+    <details class="my-3" <?= $editPoint || posted('action') === 'add_point' ? 'open' : '' ?>>
+        <summary>Manage relief points</summary>
+        <ul>
+            <?php foreach ($pdo->query('SELECT id,name,barangay,active FROM relief_points ORDER BY barangay,name') as $listed): ?>
+                <li><a href="?edit_point=<?= (int)$listed['id'] ?>"><?= htmlspecialchars($listed['name'].' · '.$listed['barangay']) ?></a>
+                    <?= $listed['active'] ? '' : '· Inactive' ?>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+        <h2 class="h5"><?= $editPoint ? 'Edit relief point' : 'Add relief point' ?></h2>
         <form method="post" class="col-md-7">
             <input type="hidden" name="token" value="<?= $_SESSION['token'] ?>">
-            <label class="d-block">Point name<input class="form-control" name="name" required maxlength="100" value="<?= htmlspecialchars(posted('name')) ?>"></label>
+            <label class="d-block">Point name<input class="form-control" name="name" required maxlength="100" value="<?= htmlspecialchars($pointForm['name']) ?>"></label>
             <label class="d-block">Barangay<select class="form-select" name="barangay" required><option value="">Choose barangay</option>
-                <?php foreach ($areas as $area): ?><option <?= posted('barangay') === $area ? 'selected' : '' ?>><?= $area ?></option><?php endforeach; ?>
+                <?php foreach ($areas as $area): ?><option <?= $pointForm['barangay'] === $area ? 'selected' : '' ?>><?= $area ?></option><?php endforeach; ?>
             </select></label>
-            <label class="d-block mb-2">Address or landmark<input class="form-control" name="address" required maxlength="255" value="<?= htmlspecialchars(posted('address')) ?>"></label>
+            <?php
+            $pickerKind = 'relief_locations';
+            $point = $pointForm;
+            require __DIR__ . '/../map/picker.php';
+            ?>
+            <label class="d-block mb-2"><input type="checkbox" name="inactive" value="yes" <?= $pointForm['active'] ? '' : 'checked' ?>> Inactive (closed for distribution)</label>
             <button class="btn btn-primary" name="action" value="add_point">Save relief point</button>
+            <?php if ($editPoint): ?><a class="btn btn-outline-secondary" href="index.php">Return to distributions</a><?php endif; ?>
         </form>
     </details>
     <form method="post" class="col-lg-8">
@@ -140,8 +188,8 @@ require __DIR__ . '/../includes/header.php';
         <label class="d-block mb-2">Actual receiving representative<input class="form-control" name="receiver" required maxlength="100" value="<?= htmlspecialchars($receiver) ?>"></label>
         <label class="d-block mb-3">Relief point<select class="form-select" name="point" required>
             <option value="">Choose relief point</option>
-            <?php foreach ($pdo->query('SELECT * FROM relief_points ORDER BY barangay,name') as $row): ?>
-                <option value="<?= (int)$row['id'] ?>" <?= $point === (string)$row['id'] ? 'selected' : '' ?>><?= htmlspecialchars($row['name'].' · '.$row['barangay'].' · '.$row['address']) ?></option>
+            <?php foreach ($pdo->query('SELECT * FROM relief_points WHERE active=1 ORDER BY barangay,name') as $row): ?>
+                <option value="<?= (int)$row['id'] ?>" <?= $pointId === (string)$row['id'] ? 'selected' : '' ?>><?= htmlspecialchars($row['name'].' · '.$row['barangay'].' · '.$row['address']) ?></option>
             <?php endforeach; ?>
         </select></label>
         <h2 class="h5">Goods to issue</h2>

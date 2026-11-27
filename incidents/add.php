@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/access.php';
+require_once __DIR__ . '/../map/boundary.php';
 $staff = $user['role'] === 'staff';
 $name = '';
 $phone = '';
@@ -30,6 +31,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($location === '' || mb_strlen($location) > 255 || $description === '' || mb_strlen($description) > 4000) {
         $error = 'Enter a written location (up to 255 characters) and description (up to 4,000).';
     }
+    $lat = trim(posted('latitude'));
+    $lng = trim(posted('longitude'));
+    $problems = locationErrors($location, $lat, $lng);
+    if ($error === '' && $problems) {
+        $error = $problems[0];
+    }
+    $lat = $lat === '' ? null : $lat;
+    $lng = $lng === '' ? null : $lng;
     $image = null;
     $file = $_FILES['image'] ?? null;
     if ($error === '' && $file && $file['error'] !== UPLOAD_ERR_NO_FILE) {
@@ -53,8 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($error === '') {
         try {
             $pdo->beginTransaction();
-            $query = $pdo->prepare('INSERT INTO incidents(submitted_by,source,contact_name,contact_phone,incident_type,barangay,location,description) VALUES(?,?,?,?,?,?,?,?)');
-            $query->execute([$user['id'],$source,$name,$phone,$type,$area ?: null,$location,$description]);
+            $query = $pdo->prepare('INSERT INTO incidents(submitted_by,source,contact_name,contact_phone,incident_type,barangay,location,description,latitude,longitude) VALUES(?,?,?,?,?,?,?,?,?,?)');
+            $query->execute([$user['id'],$source,$name,$phone,$type,$area ?: null,$location,$description,$lat,$lng]);
             $id = $pdo->lastInsertId();
             if ($image !== null) {
                 $query = $pdo->prepare('INSERT INTO incident_images(incident_id,mime,image_data) VALUES(?,?,?)');
@@ -92,7 +101,15 @@ require __DIR__ . '/../includes/header.php';
         <option value="">Awaiting confirmation</option>
         <?php foreach ($areas as $value): ?><option <?= $area === $value ? 'selected' : '' ?>><?= $value ?></option><?php endforeach; ?>
     </select></label>
-    <label class="d-block mb-2">Written location or landmark<input class="form-control" name="location" required maxlength="255" value="<?= htmlspecialchars($location) ?>"></label>
+    <?php
+    $pickerKind = 'incidents';
+    $point = ['location' => $location];
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $point['latitude'] = posted('latitude');
+        $point['longitude'] = posted('longitude');
+    }
+    require __DIR__ . '/../map/picker.php';
+    ?>
     <label class="d-block mb-2">What happened?<textarea class="form-control" name="description" required maxlength="4000"><?= htmlspecialchars($description) ?></textarea></label>
     <label class="d-block mb-3">Photo (optional, JPEG, PNG or WebP up to 2 MiB)<input type="file" class="form-control" name="image" accept="image/jpeg,image/png,image/webp"></label>
     <button class="btn btn-primary">Submit report</button>

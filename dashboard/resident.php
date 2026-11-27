@@ -6,6 +6,21 @@ require __DIR__ . '/../includes/header.php';
 ?>
 <h1>Resident dashboard</h1>
 <a class="btn btn-primary" href="../incidents/add.php">Report an incident</a>
+<a class="btn btn-outline-secondary" href="../map/index.php">Community map</a>
+<h2 class="h4 mt-3">My latest report</h2>
+<?php
+$query = $pdo->prepare("SELECT id,incident_type,status,reported_at FROM incidents
+    WHERE submitted_by=? AND source='Resident' ORDER BY reported_at DESC,id DESC LIMIT 1");
+$query->execute([$user['id']]);
+$report = $query->fetch();
+?>
+<?php if ($report): ?>
+    <p><?= htmlspecialchars($report['incident_type'].' · '.$report['status'].' · '.$report['reported_at']) ?>
+        <a href="../incidents/view.php?id=<?= (int)$report['id'] ?>">View my report</a>
+    </p>
+<?php else: ?>
+    <p>You have no incident reports yet.</p>
+<?php endif; ?>
 <p>Signed in as <?= htmlspecialchars($user['full_name']) ?>.</p>
 <?php
 $total = (int)$pdo->query("SELECT COUNT(*) FROM announcements WHERE status='Published'")->fetchColumn();

@@ -16,7 +16,9 @@ if ($filters['reference'] !== '') {
     $args[] = $filters['reference'];
 }
 foreach (['type'=>'incident_type','status'=>'status','barangay'=>'barangay','date'=>'DATE(reported_at)'] as $field=>$column) {
-    if ($filters[$field] !== '') {
+    if ($field === 'barangay' && $filters[$field] === 'Awaiting confirmation') {
+        $conditions[] = 'barangay IS NULL';
+    } elseif ($filters[$field] !== '') {
         $conditions[] = $column . '=?';
         $args[] = $filters[$field];
     }
@@ -38,7 +40,7 @@ require __DIR__ . '/../includes/header.php';
 <form method="get" class="row g-2 mb-3">
     <label class="col-md-3">Reference<input class="form-control" name="reference" value="<?= htmlspecialchars($filters['reference']) ?>"></label>
     <label class="col-md-2">Reported date<input class="form-control" type="date" name="date" value="<?= htmlspecialchars($filters['date']) ?>"></label>
-    <?php foreach (['type'=>$types,'status'=>['Pending','Verified','Responding','Resolved','Rejected'],'barangay'=>$areas] as $field=>$options): ?>
+    <?php foreach (['type'=>$types,'status'=>['Pending','Verified','Responding','Resolved','Rejected'],'barangay'=>array_merge($areas, ['Awaiting confirmation'])] as $field=>$options): ?>
         <label class="col-md-2"><?= ucfirst($field) ?>
             <select class="form-select" name="<?= $field ?>">
                 <option value="">All</option>

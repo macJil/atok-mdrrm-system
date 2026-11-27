@@ -14,3 +14,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .report-copy th, .report-copy td { border: 1px solid #aaa; padding: .5rem; text-align: left; }
 @media print { .screen-only { display: none; } .report-copy { margin: 0; } }
 @page { size: A4; margin: 18mm; }
+
+[data-picker-map], #community-map {height: 320px; background: #e6eef2;}
+#community-map {height: min(60vh, 540px);}
+.record-pin {background: white; border: 2px solid #294960; border-radius: 50%; text-align: center; line-height: 26px; font-size: 18px;}

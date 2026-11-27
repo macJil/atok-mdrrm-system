@@ -61,6 +61,10 @@ require __DIR__ . '/../includes/header.php';
     $search = is_string($_GET['q'] ?? null) ? trim($_GET['q']) : '';
     $term = '%' . strtr($search, ['!'=>'!!','%'=>'!%','_'=>'!_']) . '%';
     $where = " WHERE name LIKE ? ESCAPE '!' OR unit LIKE ? ESCAPE '!'";
+    $attention = ($_GET['attention'] ?? '') === '1';
+    if ($attention) {
+        $where = " WHERE (name LIKE ? ESCAPE '!' OR unit LIKE ? ESCAPE '!') AND balance <= minimum_stock";
+    }
     $query = $pdo->prepare('SELECT COUNT(*) FROM relief_goods' . $where);
     $query->execute([$term,$term]);
     $pages = max(1,(int)ceil($query->fetchColumn()/10));
@@ -71,6 +75,7 @@ require __DIR__ . '/../includes/header.php';
 ?>
     <a class="btn btn-outline-primary" href="#good-form">Add good</a>
     <form method="get" class="my-3">
+        <?php if ($attention): ?><input type="hidden" name="attention" value="1"><p>Out of stock or at minimum stock. <a href="index.php">Show all goods</a></p><?php endif; ?>
         <label>Search name or unit<input class="form-control" name="q" value="<?= htmlspecialchars($search) ?>"></label>
         <button class="btn btn-outline-secondary">Search</button>
     </form>
@@ -95,8 +100,8 @@ require __DIR__ . '/../includes/header.php';
         </tbody>
     </table></div>
     <p>Page <?= $page ?> of <?= $pages ?>
-        <?php if ($page > 1): ?><a href="?q=<?= urlencode($search) ?>&amp;page=<?= $page-1 ?>">Previous</a><?php endif; ?>
-        <?php if ($page < $pages): ?><a href="?q=<?= urlencode($search) ?>&amp;page=<?= $page+1 ?>">Next</a><?php endif; ?>
+        <?php if ($page > 1): ?><a href="?q=<?= urlencode($search) ?>&amp;attention=<?= (int)$attention ?>&amp;page=<?= $page-1 ?>">Previous</a><?php endif; ?>
+        <?php if ($page < $pages): ?><a href="?q=<?= urlencode($search) ?>&amp;attention=<?= (int)$attention ?>&amp;page=<?= $page+1 ?>">Next</a><?php endif; ?>
     </p>
 <?php endif; ?>
 <h2 id="good-form"><?= $editing ? 'Edit good' : 'Add good' ?></h2>

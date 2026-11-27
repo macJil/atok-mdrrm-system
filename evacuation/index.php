@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/../includes/session.php';
+require_once __DIR__ . '/../map/boundary.php';
 requireRole('staff');
 $areas = ['Abiang','Caliking','Cattubo','Naguey','Paoay','Pasdong','Poblacion','Topdac'];
 $editing = isset($_GET['id']);
@@ -37,7 +38,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 !in_array($form['barangay'],$areas,true) || !in_array($form['status'],['Open','Closed'],true) || !$capacity) {
                 throw new DomainException('Enter a name, barangay, address, valid status and a capacity of 1–1,000,000 people.');
             }
-            $args = [$form['name'],$form['barangay'],$form['address'],$capacity,$form['status']];
+            $lat = trim(posted('latitude'));
+            $lng = trim(posted('longitude'));
+            $problems = locationErrors($form['address'], $lat, $lng);
+            if ($problems) {
+                throw new DomainException($problems[0]);
+            }
+            $lat = $lat === '' ? null : $lat;
+            $lng = $lng === '' ? null : $lng;
+            $args = [$form['name'],$form['barangay'],$form['address'],$capacity,$form['status'],$lat,$lng];
             if ($editing) {
                 $query = $pdo->prepare('SELECT COUNT(*) FROM evacuation_stays WHERE center_id=? AND left_at IS NULL');
                 $query->execute([$id]);
@@ -45,10 +54,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($occupancy > $capacity || ($occupancy > 0 && $form['status'] === 'Closed')) {
                     throw new DomainException('Check people out before closing the center or reducing capacity below current occupancy.');
                 }
-                $query = $pdo->prepare('UPDATE evacuation_centers SET name=?,barangay=?,address=?,capacity=?,status=? WHERE id=?');
+                $query = $pdo->prepare('UPDATE evacuation_centers SET name=?,barangay=?,address=?,capacity=?,status=?,latitude=?,longitude=? WHERE id=?');
                 $args[] = $id;
             } else {
-                $query = $pdo->prepare('INSERT INTO evacuation_centers(name,barangay,address,capacity,status) VALUES(?,?,?,?,?)');
+                $query = $pdo->prepare('INSERT INTO evacuation_centers(name,barangay,address,capacity,status,latitude,longitude) VALUES(?,?,?,?,?,?,?)');
             }
             $query->execute($args);
         } else {
@@ -110,7 +119,15 @@ require __DIR__ . '/../includes/header.php';
         <option value="">Choose barangay</option>
         <?php foreach ($areas as $area): ?><option <?= $form['barangay'] === $area ? 'selected' : '' ?>><?= $area ?></option><?php endforeach; ?>
     </select></label>
-    <label class="d-block mb-2">Address or landmark<input name="address" class="form-control" required maxlength="255" value="<?= htmlspecialchars($form['address']) ?>"></label>
+    <?php
+    $pickerKind = 'centers';
+    $point = $form;
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $point['latitude'] = posted('latitude');
+        $point['longitude'] = posted('longitude');
+    }
+    require __DIR__ . '/../map/picker.php';
+    ?>
     <label class="d-block mb-2">Capacity in people<input name="capacity" class="form-control" type="number" min="1" max="1000000" required value="<?= htmlspecialchars($form['capacity']) ?>"></label>
     <label class="d-block mb-2">Status<select name="status" class="form-select"><option>Open</option><option <?= $form['status']==='Closed'?'selected':'' ?>>Closed</option></select></label>
     <button class="btn btn-primary" name="action" value="save">Save center</button>
