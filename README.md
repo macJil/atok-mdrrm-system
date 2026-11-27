@@ -16,9 +16,9 @@ The first implementation milestone is login, household CRUD and staff-led reside
 
 1. Place the folder in htdocs and start Apache and MySQL.
 2. Set host, port, username, password and base URL directly in config.php for your machine. Keep private settings local.
-3. Import database/foundation.sql. Existing Phase 1 databases can run the same script to add the accounts table.
+3. Import database/foundation.sql and then database/announcements.sql before opening the login page. Existing Phase 1 databases can run the same script to add the accounts table.
 4. In a private terminal run `php database/initialize_staff.php your-office-email`. Give the one-time displayed password to the staff member privately.
-5. Visit the project root and change the temporary password. Staff can create other staff accounts, change account status, and issue new temporary passwords after identity verification. Resident enrollment from households comes in Phase 3.
+5. Visit the project root and change the temporary password. Staff can create other staff accounts, change account status, and issue new temporary passwords after identity verification. Staff enroll residents from household member details.
 
 The login page verifies the saved password hash, renews the session ID and redirects by role. Shared session checks read the current account on each request. Password resets and status changes invalidate earlier sessions. The staff management page locks staff records during changes so at least one staff account remains active.
 
@@ -46,8 +46,12 @@ Import database/relief_inventory.sql after foundation.sql. Open Relief inventory
 
 ## Page organization
 
-Keep request handling, prepared SQL and the form for a task together. Share the household form because both add and update use it. Share incident ownership checks because details, images, and report copies need identical permissions. Team maintenance stays on one page; evacuation lists and stays, and inventory goods and movements, have distinct pages. All modules use the same session checks, header and footer.
+Keep request handling, prepared SQL and the form for a task together. The household form handles both creation and editing, with its validation and SQL above the fields. Share incident ownership checks because details, images, and report copies need identical permissions. Team maintenance stays on one page; evacuation lists and stays, and inventory goods and movements, have distinct pages. All modules use the same session checks, header and footer.
 
 ## Household relief distribution
 
 Import database/relief_distribution.sql after households.sql and relief_inventory.sql. Open Relief distribution on the staff dashboard, register a relief point, select an affected household, enter the actual receiver and choose quantities. One POST saves the distribution, receipt lines and municipal stock movements together. History opens the receipt for each issue.
+
+## Announcements
+
+For an existing installation, import database/announcements.sql before updating the website. From the staff dashboard choose Manage announcements. Save a draft or publish a notice to residents. The optional login-page checkbox starts unchecked. The login page shows the three most recently published public notices below sign-in. Withdrawing a notice removes it from both audiences and clears public display for its next publication.

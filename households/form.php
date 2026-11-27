@@ -1,6 +1,40 @@
 <?php
-require_once __DIR__ . '/household_function.php';
-if (!isset($form)) { http_response_code(404); exit; }
+require __DIR__ . '/household_function.php';
+$editing = isset($_GET['id']);
+$form = ['barangay'=>'', 'address'=>'', 'emergency_name'=>'', 'emergency_phone'=>'', 'registry_reason'=>'Monitored', 'vulnerability'=>'Not assessed', 'hazard_notes'=>''];
+if ($editing) {
+    $id = householdId();
+    $form = findHousehold($id);
+}
+$error = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $form = [];
+    foreach (['barangay','address','emergency_name','emergency_phone','registry_reason','vulnerability','hazard_notes'] as $field) {
+        $form[$field] = trim(posted($field));
+    }
+    if (!in_array($form['barangay'], BARANGAYS, true) || !in_array($form['registry_reason'], REASONS, true) || !in_array($form['vulnerability'], VULNERABILITY, true)) {
+        $error = 'Choose a valid barangay, registry reason and assessment.';
+    } elseif ($form['address'] === '' || mb_strlen($form['address']) > 255 || $form['emergency_name'] === '' || mb_strlen($form['emergency_name']) > 100 || mb_strlen($form['hazard_notes']) > 500) {
+        $error = 'Enter an address and emergency contact name within the field limits.';
+    } elseif (!preg_match('/^(?:09[0-9]{9}|[+]639[0-9]{9})$/D', $form['emergency_phone'])) {
+        $error = 'Enter a mobile number starting with 09 or +639 followed by nine digits.';
+    }
+    if ($error === '') {
+        $values = array_values($form);
+        if ($editing) {
+            $query = $pdo->prepare('UPDATE households SET barangay=?,address=?,emergency_name=?,emergency_phone=?,registry_reason=?,vulnerability=?,hazard_notes=? WHERE id=?');
+            $values[] = $id;
+        } else {
+            $query = $pdo->prepare('INSERT INTO households(barangay,address,emergency_name,emergency_phone,registry_reason,vulnerability,hazard_notes) VALUES(?,?,?,?,?,?,?)');
+        }
+        $query->execute($values);
+        if (!$editing) {
+            $id = $pdo->lastInsertId();
+        }
+        go('households/view.php?id=' . $id);
+    }
+}
+$pageTitle = $editing ? 'Edit household' : 'Add household';
 require __DIR__ . '/../includes/header.php';
 ?>
 <h1><?= h($pageTitle) ?></h1>

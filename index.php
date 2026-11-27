@@ -30,4 +30,19 @@ require __DIR__ . '/includes/header.php';
     <button class="btn btn-primary">Sign in</button>
 </form>
 <p class="mt-3">Forgot your password? Contact MDRRMO staff to verify your identity and request a temporary password.</p>
+<?php
+$notices = $pdo->query("SELECT title,category,message,published_at FROM announcements WHERE status='Published' AND show_on_login=1 ORDER BY published_at DESC,id DESC LIMIT 3")->fetchAll();
+?>
+<?php if ($notices): ?>
+    <section class="mt-4" aria-labelledby="notices">
+        <h2 id="notices">Public announcements</h2>
+        <?php foreach ($notices as $notice): ?>
+            <article class="mb-3">
+                <h3 class="h5"><?= htmlspecialchars($notice['title']) ?></h3>
+                <p class="mb-1"><?= htmlspecialchars($notice['category']) ?> · <?= htmlspecialchars($notice['published_at']) ?></p>
+                <p><?= nl2br(htmlspecialchars($notice['message'])) ?></p>
+            </article>
+        <?php endforeach; ?>
+    </section>
+<?php endif; ?>
 <?php require __DIR__ . '/includes/footer.php'; ?>

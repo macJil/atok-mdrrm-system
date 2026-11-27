@@ -6,6 +6,7 @@ require __DIR__ . '/../includes/header.php';
 ?>
 <h1>Staff dashboard</h1>
 <p>Signed in as <?= htmlspecialchars($user['full_name']) ?>.</p>
+<a class="btn btn-primary" href="../announcements/index.php">Manage announcements</a>
 <a class="btn btn-primary" href="../relief_inventory/index.php">Relief inventory</a>
 <a class="btn btn-primary" href="../relief_distribution/index.php">Relief distribution</a>
 <a class="btn btn-primary" href="../evacuation/index.php">Evacuation centers</a>

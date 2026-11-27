@@ -1,5 +1,8 @@
 <?php
-require __DIR__ . '/record.php';
+require __DIR__ . '/access.php';
+$id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+$report = readIncident($pdo, $user, $id);
+$reference = 'ATOK-IR-' . substr($report['reported_at'], 0, 4) . '-' . str_pad($report['id'], 4, '0', STR_PAD_LEFT);
 ?>
 <!doctype html>
 <html lang="en">

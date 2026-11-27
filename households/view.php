@@ -28,7 +28,7 @@ require __DIR__ . '/../includes/header.php';
 <p>Emergency contact: <?= h($household['emergency_name']) ?> · <?= h($household['emergency_phone']) ?></p>
 <p><?= h($household['registry_reason']) ?> · <?= h($household['vulnerability']) ?></p>
 <p>Hazard notes: <?= h($household['hazard_notes'] ?: 'None recorded') ?></p>
-<a class="btn btn-outline-secondary" href="update.php?id=<?= $id ?>">Edit household</a>
+<a class="btn btn-outline-secondary" href="form.php?id=<?= $id ?>">Edit household</a>
 <a class="btn btn-outline-secondary" href="delete.php?id=<?= $id ?>">Delete household</a>
 <a class="btn btn-outline-secondary" href="index.php">Return to registry</a>
 <h2 class="mt-4">Members · <?= $count ?> active</h2>

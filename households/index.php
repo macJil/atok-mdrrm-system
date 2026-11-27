@@ -26,7 +26,7 @@ $pageTitle = 'Household registry';
 require __DIR__ . '/../includes/header.php';
 ?>
 <h1>Household registry</h1>
-<p><a class="btn btn-primary" href="add.php">Add household</a></p>
+<p><a class="btn btn-primary" href="form.php">Add household</a></p>
 <form method="get" class="mb-3">
     <label>Search by person, barangay or address<input class="form-control" name="q" value="<?= h($search) ?>"></label>
     <button class="btn btn-outline-secondary">Search</button>

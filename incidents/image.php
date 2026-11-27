@@ -1,5 +1,7 @@
 <?php
-require __DIR__ . '/record.php';
+require __DIR__ . '/access.php';
+$id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+$report = readIncident($pdo, $user, $id);
 $query = $pdo->prepare('SELECT mime,image_data FROM incident_images WHERE incident_id=?');
 $query->execute([$id]);
 $image = $query->fetch();
