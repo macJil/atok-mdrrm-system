@@ -6,17 +6,19 @@ $reference = 'ATOK-IR-' . substr($report['reported_at'], 0, 4) . '-' . str_pad($
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['copy'])) {
     require_once __DIR__ . '/../includes/report_pdf.php';
     $pdf = startOfficeReport('Community emergency and incident report');
-    $pdf->lineText($reference . '  |  ' . ($user['role'] === 'staff' ? 'Staff copy' : 'Resident copy'));
-    $pdf->section('Intake and location');
-    foreach (['reported_at'=>'Reported','source'=>'Reporting source','contact_name'=>'Reporter','contact_phone'=>'Contact number',
-              'barangay'=>'Barangay','location'=>'Written location','incident_type'=>'Classification','status'=>'Current status'] as $key=>$label) {
-        $pdf->lineText($label . ': ' . ($report[$key] ?? 'Awaiting confirmation'));
-    }
+    $pdf->fields(['Control number'=>$reference, 'Reported'=>$report['reported_at'],
+        'Copy'=>$user['role'] === 'staff' ? 'Staff copy' : 'Resident copy']);
+    $pdf->fields(['Reporting source'=>$report['source'], 'Reporter'=>$report['contact_name'], 'Contact number'=>$report['contact_phone']]);
+    $pdf->section('I. Incident location');
     $coordinates = $report['latitude'] === null ? 'Not recorded' : $report['latitude'] . ', ' . $report['longitude'];
-    $pdf->lineText('Coordinates: ' . $coordinates);
-    $pdf->section('Incident narrative');
-    $pdf->lineText($report['description']);
+    $pdf->fields(['Barangay'=>$report['barangay'] ?? 'Awaiting confirmation', 'Coordinates'=>$coordinates]);
+    $pdf->lineText('Address or landmark: ' . $report['location']);
+    $pdf->section('II. Nature and classification of incident');
+    $pdf->fields(['Incident type'=>$report['incident_type'], 'Current status'=>$report['status']]);
+    $pdf->section('III. Affected persons and damages');
     $pdf->lineText('Injury, casualty and damage totals: not collected on this report.');
+    $pdf->section('IV. Incident narrative');
+    $pdf->lineText($report['description']);
     if ($user['role'] === 'staff') {
         $pdf->section('Response actions');
         $query = $pdo->prepare('SELECT a.recorded_at,a.action_taken,a.remarks,t.name FROM response_actions a
@@ -30,7 +32,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['copy'])) {
             $pdf->lineText($action['recorded_at'].' | '.$action['action_taken'].' | '.($action['name'] ?? 'Staff review').' | '.$action['remarks']);
         }
     }
-    $pdf->Output('D', $reference . '.pdf');
+    if ($user['role'] === 'staff') {
+        $pdf->Ln(4);
+        $pdf->fields(['Prepared by'=>'___________________', 'Verified by'=>'___________________', 'Noted by'=>'___________________']);
+    }
+    $pdf->Output('I', $reference . '.pdf');
     exit;
 }
 $staff = $user['role'] === 'staff';
@@ -120,7 +126,7 @@ require __DIR__ . '/../includes/header.php';
 <h2 class="h5">Reporter</h2>
 <p><?= htmlspecialchars($report['contact_name']) ?> · <?= htmlspecialchars($report['contact_phone']) ?> · <?= htmlspecialchars($report['source']) ?></p>
 <?php if ($report['has_image']): ?><p><a class="btn btn-outline-secondary" href="image.php?id=<?= $id ?>">View attached image</a></p><?php endif; ?>
-<a class="btn btn-primary" href="?id=<?= $id ?>&amp;copy=1">Download incident PDF</a>
+<a class="btn btn-primary" target="_blank" rel="noopener" href="?id=<?= $id ?>&amp;copy=1">Print incident report</a>
 <a class="btn btn-outline-secondary" href="index.php">Return to reports</a>
 <?php if ($staff): ?>
     <h2 class="h4 mt-4">Incident response</h2>

@@ -20,3 +20,10 @@ Give a teammate the two fictional logins and two separate browser profiles. Ask 
 ## Decisions for office review
 
 The team's visit record identifies the MDRRM Office, Atok, on 17 November 2026. The team reports approval of the eight proposed modules, a dashboard priority, and requests for CAR weather and printable reports. The sample report supplied by the team informed the PDF layout. Confirm office branding, print headings, signatories, and the municipal boundary with the office. Use an interview photograph only after confirming display permission. A timed team rehearsal, direct observation of an unfamiliar teammate, and office approval remain pending.
+
+## Review fixes · 28 November 2026
+
+- Open one notice in two staff sessions. Publish in the first, then save or withdraw from the stale form. Both stale actions were refused and the current notice reloaded.
+- Issue supplies in Paoay and change the household to Caliking. The Paoay report retained the original quantity. A separate upgrade from the prior classroom schema preserved older distributions in municipal totals and labeled their barangay unconfirmed.
+- Open Print incident report in each role and Print disaster summary with a barangay filter. Checked the A4 output and the inline PDF response; private response remarks appeared only on the staff copy. Use the PDF viewer’s Print control.
+- Rechecked the eight-module suite, including simultaneous arrivals, failed stock deductions, resident ownership, and map privacy. Primary actions on the module entry pages passed browser checks at 390 and 1280 pixels.

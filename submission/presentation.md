@@ -48,11 +48,11 @@ Filter the staff dashboard to Paoay. Follow the flooding count into the incident
 
 ## ATOK MDRRM SYSTEM  /  MEMBER 8 · 25:20–27:00 — Print the staff disaster summary
 
-Select Paoay in Disaster summaries and use today for both dates. Download the PDF and CSV. Compare the lines for bottles and packs, then choose an earlier period and show how arrivals change while occupancy remains current. In summaries/index.php trace the same query results into both downloads.
+Select Paoay in Disaster summaries and use today for both dates. Choose Print to open the PDF, then download the CSV. Compare the lines for bottles and packs, then choose an earlier period and show how arrivals change while occupancy remains current. In summaries/index.php trace the same query results into both downloads.
 
 ## ATOK MDRRM SYSTEM  /  MEMBER 9 · 27:00–29:20 — Find the same incident on the shared map
 
-Open the community map as Mila. Point out the verified road obstruction and the open center. In map/index.php show that household rows are requested only for staff. Open Mila’s incident and download the resident PDF. Compare it to the staff download; response remarks appear only in the staff copy.
+Open the community map as Mila. Point out the verified road obstruction and the open center. In map/index.php show that household rows are requested only for staff. Open Mila’s incident and open the resident print copy. Compare it to the staff download; response remarks appear only in the staff copy.
 
 ## ATOK MDRRM SYSTEM  /  MEMBER 9 · 29:20–30:00 — Documentation and handoff
 

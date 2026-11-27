@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS relief_distributions (
     receiver VARCHAR(100) NOT NULL,
     staff_id INT UNSIGNED NOT NULL,
     distributed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    barangay_at_issue VARCHAR(40) NULL,
     submission_key CHAR(32) NOT NULL UNIQUE,
     FOREIGN KEY (household_id) REFERENCES households(id),
     FOREIGN KEY (point_id) REFERENCES relief_points(id),

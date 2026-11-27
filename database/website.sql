@@ -180,6 +180,7 @@ CREATE TABLE relief_distributions (
     receiver VARCHAR(100) NOT NULL,
     staff_id INT UNSIGNED NOT NULL,
     distributed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    barangay_at_issue VARCHAR(40) NULL,
     submission_key CHAR(32) NOT NULL UNIQUE,
     FOREIGN KEY (household_id) REFERENCES households(id),
     FOREIGN KEY (point_id) REFERENCES relief_points(id),
@@ -202,6 +203,7 @@ CREATE TABLE announcements (
     category ENUM('Disaster advisory','Evacuation instructions','Emergency announcement','Preparedness reminder') NOT NULL,
     message TEXT NOT NULL,
     status ENUM('Draft','Published','Withdrawn') NOT NULL DEFAULT 'Draft',
+    revision INT UNSIGNED NOT NULL DEFAULT 1,
     show_on_login BOOLEAN NOT NULL DEFAULT FALSE,
     published_at DATETIME DEFAULT NULL,
     INDEX (status, published_at, id)

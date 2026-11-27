@@ -42,10 +42,13 @@ if (!$error) {
     $incidents = $query->fetchAll();
     $query = $pdo->prepare("SELECT g.name,g.unit,SUM(i.quantity) AS issued FROM distribution_items i
         JOIN relief_goods g ON g.id=i.good_id JOIN relief_distributions d ON d.id=i.distribution_id
-        JOIN households h ON h.id=d.household_id WHERE DATE(d.distributed_at) BETWEEN ? AND ? AND (?='' OR h.barangay=?)
+        WHERE DATE(d.distributed_at) BETWEEN ? AND ? AND (?='' OR d.barangay_at_issue=?)
         GROUP BY g.id ORDER BY g.name,g.unit");
     $query->execute([$from,$through,$area,$area]);
     $goods = $query->fetchAll();
+    $query = $pdo->prepare('SELECT COUNT(*) FROM relief_distributions WHERE barangay_at_issue IS NULL AND DATE(distributed_at) BETWEEN ? AND ?');
+    $query->execute([$from,$through]);
+    $unconfirmed = (int)$query->fetchColumn();
 }
 $export = $_GET['export'] ?? '';
 if (!$error && in_array($export, ['pdf','csv'], true)) {
@@ -69,6 +72,9 @@ if (!$error && in_array($export, ['pdf','csv'], true)) {
     if (!$incidents) {
         $rows[] = ['Period incidents','All types','reports',0];
     }
+    if ($unconfirmed) {
+        $rows[] = ['Municipal context','Barangay unconfirmed (included only in All barangays)','distributions',$unconfirmed];
+    }
     if (!$goods) {
         $rows[] = ['Period distributions','No recorded distributions','distributions',0];
     }
@@ -91,17 +97,36 @@ if (!$error && in_array($export, ['pdf','csv'], true)) {
     } else {
         require_once __DIR__ . '/../includes/report_pdf.php';
         $pdf = startOfficeReport('Disaster summary');
-        $pdf->lineText('Reference: ATOK-SUM / '.$place.' / '.$period);
+        $pdf->fields(['Report reference'=>'ATOK-SUM', 'Barangay'=>$place, 'Selected period'=>$period]);
         $pdf->lineText('Current registry and occupancy are measured at generation. Period counts use the selected dates.');
-        $section = '';
-        foreach ($rows as [$measure,$record,$unit,$quantity]) {
-            if ($section !== $measure) {
-                $pdf->section($measure);
-                $section = $measure;
-            }
-            $pdf->lineText($record.'  |  '.$quantity.' '.$unit);
+        $pdf->section('I. Affected households');
+        $pdf->lineText('Registered as affected now: ' . $affected);
+        $pdf->section('II. Evacuation center occupancy');
+        foreach ($centers as $center) {
+            $pdf->lineText($center['name'] . ' (' . $center['status'] . ')');
+            $pdf->fields(['Person capacity'=>$center['capacity'], 'People staying now'=>$center['staying'], 'Arrivals in period'=>$center['arrivals']]);
         }
-        $pdf->Output('D','atok-disaster-summary.pdf');
+        if (!$centers) {
+            $pdf->lineText('No centers registered for this selection.');
+        }
+        $pdf->section('III. Incidents reported during the period');
+        foreach ($incidents as $row) {
+            $pdf->lineText($row['incident_type'].' / '.$row['status'].': '.$row['total']);
+        }
+        if (!$incidents) {
+            $pdf->lineText('Reports during the period: 0');
+        }
+        $pdf->section('IV. Relief goods distributed during the period');
+        foreach ($goods as $row) {
+            $pdf->lineText($row['name'].': '.$row['issued'].' '.$row['unit']);
+        }
+        if (!$goods) {
+            $pdf->lineText('Recorded distributions for this selection: 0');
+        }
+        if ($unconfirmed) {
+            $pdf->lineText('Municipal distributions with unconfirmed barangay (included only in All barangays): '.$unconfirmed);
+        }
+        $pdf->Output('I','atok-disaster-summary.pdf');
     }
     exit;
 }
@@ -122,7 +147,7 @@ require __DIR__ . '/../includes/header.php';
     <p role="alert"><?= htmlspecialchars($error) ?></p>
 <?php else: ?>
     <p>
-        <a class="btn btn-outline-primary" href="?<?= htmlspecialchars(http_build_query($dates + ['barangay'=>$area,'export'=>'pdf'])) ?>">Download summary PDF</a>
+        <a class="btn btn-outline-primary" target="_blank" rel="noopener" href="?<?= htmlspecialchars(http_build_query($dates + ['barangay'=>$area,'export'=>'pdf'])) ?>">Print disaster summary</a>
         <a class="btn btn-outline-secondary" href="?<?= htmlspecialchars(http_build_query($dates + ['barangay'=>$area,'export'=>'csv'])) ?>">Download totals CSV</a>
     </p>
     <h2 class="h4">Affected households now: <?= (int)$affected ?></h2>
@@ -141,7 +166,8 @@ require __DIR__ . '/../includes/header.php';
     <?php if (!$incidents): ?><p>No reports in this period.</p><?php endif; ?>
     <?php foreach ($incidents as $row): ?><p><?= htmlspecialchars($row['incident_type'].' · '.$row['status'].' · '.$row['total']) ?></p><?php endforeach; ?>
     <h2 class="h4">Goods distributed during selected period</h2>
-    <p>Grouped by good and unit, using the recipient household’s barangay.</p>
+    <p>Grouped by good and unit, using the barangay recorded at issue. Older distributions with an unconfirmed barangay appear only under All barangays.</p>
+    <?php if ($unconfirmed): ?><p>Municipal distributions with unconfirmed barangay in this period: <?= $unconfirmed ?>.</p><?php endif; ?>
     <?php if (!$goods): ?><p>No goods distributed in this period.</p><?php endif; ?>
     <?php foreach ($goods as $row): ?><p><?= htmlspecialchars($row['name'].' · '.$row['issued'].' '.$row['unit']) ?></p><?php endforeach; ?>
 <?php endif; ?>

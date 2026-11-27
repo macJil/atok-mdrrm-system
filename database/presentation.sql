@@ -182,6 +182,7 @@ CREATE TABLE relief_distributions (
     receiver VARCHAR(100) NOT NULL,
     staff_id INT UNSIGNED NOT NULL,
     distributed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    barangay_at_issue VARCHAR(40) NULL,
     submission_key CHAR(32) NOT NULL UNIQUE,
     FOREIGN KEY (household_id) REFERENCES households(id),
     FOREIGN KEY (point_id) REFERENCES relief_points(id),
@@ -204,6 +205,7 @@ CREATE TABLE announcements (
     category ENUM('Disaster advisory','Evacuation instructions','Emergency announcement','Preparedness reminder') NOT NULL,
     message TEXT NOT NULL,
     status ENUM('Draft','Published','Withdrawn') NOT NULL DEFAULT 'Draft',
+    revision INT UNSIGNED NOT NULL DEFAULT 1,
     show_on_login BOOLEAN NOT NULL DEFAULT FALSE,
     published_at DATETIME DEFAULT NULL,
     INDEX (status, published_at, id)
@@ -232,7 +234,7 @@ INSERT INTO relief_points(id,name,barangay,address,latitude,longitude) VALUES(1,
 INSERT INTO stock_movements(id,good_id,direction,quantity,movement_date,reason,recorded_by)
 VALUES(1,1,'Stock-in',20,CURRENT_DATE,'Classroom opening delivery',1),(2,2,'Stock-in',20,CURRENT_DATE,'Classroom opening delivery',1),
 (3,1,'Stock-out',2,CURRENT_DATE,'Household relief distribution',1),(4,2,'Stock-out',2,CURRENT_DATE,'Household relief distribution',1);
-INSERT INTO relief_distributions(id,household_id,point_id,receiver,staff_id,submission_key) VALUES(1,1,1,'Ari Ramos',1,'00000000000000000000000000000001');
+INSERT INTO relief_distributions(id,barangay_at_issue,household_id,point_id,receiver,staff_id,submission_key) VALUES(1,'Paoay',1,1,'Ari Ramos',1,'00000000000000000000000000000001');
 INSERT INTO distribution_items(distribution_id,good_id,quantity,movement_id) VALUES(1,1,2,3),(1,2,2,4);
 INSERT INTO announcements(title,category,message,status,show_on_login,published_at)
 VALUES('Assembly hall reception','Preparedness reminder','Bring your household details to the reception desk.','Published',1,NOW()),

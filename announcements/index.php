@@ -13,12 +13,20 @@ if (isset($_GET['id'])) {
         exit('Announcement not found.');
     }
 }
-$error = '';
+$error = $_SESSION['announcement_conflict'] ?? '';
+unset($_SESSION['announcement_conflict']);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if ($id && (string)$notice['revision'] !== posted('revision')) {
+        $_SESSION['announcement_conflict'] = 'This notice changed. Review the latest version before trying again.';
+        go('announcements/index.php?id=' . $id);
+    }
     $action = posted('action');
     if ($action === 'withdraw' && $id) {
-        $query = $pdo->prepare("UPDATE announcements SET status = 'Withdrawn', show_on_login = 0 WHERE id = ? AND status = 'Published'");
-        $query->execute([$id]);
+        $query = $pdo->prepare("UPDATE announcements SET status = 'Withdrawn', show_on_login = 0, revision=revision+1 WHERE id = ? AND revision=? AND status = 'Published'");
+        $query->execute([$id, posted('revision')]);
+        if (!$query->rowCount()) {
+            $_SESSION['announcement_conflict'] = 'This notice changed. Review the latest version before trying again.';
+        }
         go('announcements/index.php?id=' . $id);
     }
     $notice['title'] = trim(posted('title'));
@@ -35,11 +43,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($id) {
             $query = $pdo->prepare("UPDATE announcements SET title=?, category=?, message=?, show_on_login=?,
                 published_at=CASE WHEN status <> 'Published' AND ? = 'Published' THEN NOW() ELSE published_at END,
-                status=? WHERE id=? AND status=?");
+                status=?, revision=revision+1 WHERE id=? AND revision=?");
             $values[] = $status;
             $values[] = $status;
             $values[] = $id;
-            $values[] = $notice['status'];
+            $values[] = (int)posted('revision');
         } else {
             $query = $pdo->prepare("INSERT INTO announcements (title,category,message,show_on_login,status,published_at)
                 VALUES (?,?,?,?,?,CASE WHEN ? = 'Published' THEN NOW() ELSE NULL END)");
@@ -47,6 +55,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $values[] = $status;
         }
         $query->execute($values);
+        if ($id && !$query->rowCount()) {
+            $_SESSION['announcement_conflict'] = 'This notice changed. Review the latest version before trying again.';
+        }
         if (!$id) {
             $id = $pdo->lastInsertId();
         }
@@ -65,6 +76,7 @@ require __DIR__ . '/../includes/header.php';
     <p role="alert"><?= htmlspecialchars($error) ?></p>
 <?php endif; ?>
 <form method="post" class="col-lg-7">
+    <?php if ($id): ?><input type="hidden" name="revision" value="<?= (int)$notice['revision'] ?>"><?php endif; ?>
     <input type="hidden" name="token" value="<?= $_SESSION['token'] ?>">
     <label class="d-block mb-2">Title
         <input class="form-control" name="title" maxlength="150" required value="<?= htmlspecialchars($notice['title']) ?>">

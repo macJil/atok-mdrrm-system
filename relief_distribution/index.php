@@ -75,9 +75,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         ksort($lines,SORT_NUMERIC);
         $pdo->beginTransaction();
-        $query = $pdo->prepare('SELECT registry_reason FROM households WHERE id=? FOR UPDATE');
+        $query = $pdo->prepare('SELECT registry_reason,barangay FROM households WHERE id=? FOR UPDATE');
         $query->execute([$household]);
-        if (!in_array($query->fetchColumn(),['Affected','Monitored and affected'],true)) {
+        $recipient = $query->fetch();
+        if (!$recipient || !in_array($recipient['registry_reason'],['Affected','Monitored and affected'],true)) {
             throw new DomainException('Select a registered affected household.');
         }
         $query = $pdo->prepare('SELECT id FROM relief_points WHERE id=? AND active=1 FOR UPDATE');
@@ -85,8 +86,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$query->fetchColumn()) {
             throw new DomainException('Choose an active distribution point.');
         }
-        $query = $pdo->prepare('INSERT INTO relief_distributions(household_id,point_id,receiver,staff_id,submission_key) VALUES(?,?,?,?,?)');
-        $query->execute([$household,$pointId,$receiver,$user['id'],$key]);
+        $query = $pdo->prepare('INSERT INTO relief_distributions(household_id,point_id,receiver,staff_id,submission_key,barangay_at_issue) VALUES(?,?,?,?,?,?)');
+        $query->execute([$household,$pointId,$receiver,$user['id'],$key,$recipient['barangay']]);
         $distribution = $pdo->lastInsertId();
         $stock = $pdo->prepare('SELECT name,balance FROM relief_goods WHERE id=? FOR UPDATE');
         $deduct = $pdo->prepare('UPDATE relief_goods SET balance=balance-? WHERE id=?');
@@ -111,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = $exception instanceof DomainException ? $exception->getMessage() : 'Could not save. Check the selected records and history for a duplicate.';
     }
 }
-$historySql = 'SELECT d.id,d.distributed_at,d.receiver,h.barangay,h.address,m.full_name AS representative,p.name AS point_name,a.full_name AS encoder
+$historySql = 'SELECT d.id,d.distributed_at,d.receiver,d.barangay_at_issue,h.barangay,h.address,m.full_name AS representative,p.name AS point_name,a.full_name AS encoder
     FROM relief_distributions d JOIN households h ON h.id=d.household_id
     LEFT JOIN household_representatives r ON r.household_id=h.id LEFT JOIN household_members m ON m.id=r.member_id
     JOIN relief_points p ON p.id=d.point_id JOIN accounts a ON a.id=d.staff_id';
@@ -131,7 +132,8 @@ require __DIR__ . '/../includes/header.php';
 <h1>Relief distribution</h1>
 <?php if ($receipt): ?>
     <h2 class="h4">Distribution receipt</h2>
-    <p>Household: <?= htmlspecialchars(($receipt['representative'] ?? 'Representative not selected').' · '.$receipt['barangay'].' · '.$receipt['address']) ?></p>
+    <p>Barangay at issue: <?= htmlspecialchars($receipt['barangay_at_issue'] ?? 'Unconfirmed (older record)') ?></p>
+    <p>Current household: <?= htmlspecialchars(($receipt['representative'] ?? 'Representative not selected').' · '.$receipt['barangay'].' · '.$receipt['address']) ?></p>
     <p>Received by <?= htmlspecialchars($receipt['receiver']) ?> at <?= htmlspecialchars($receipt['point_name']) ?>.</p>
     <p>Recorded <?= htmlspecialchars($receipt['distributed_at'].' · '.$receipt['encoder']) ?></p>
     <ul>
