@@ -16,6 +16,7 @@ $base = htmlspecialchars(rtrim($baseUrl, '/'), ENT_QUOTES, 'UTF-8');
     <p class="mb-1">Municipality of Atok, Benguet</p>
     <div class="office-name">Municipal Disaster Risk Reduction and Management Office</div>
 </header>
+<?php if ($user): ?>
 <nav class="navbar navbar-expand-md navbar-dark" aria-label="Main navigation">
     <div class="container">
         <a class="navbar-brand" href="<?= $base ?>/index.php">Atok MDRRM System</a>
@@ -24,13 +25,15 @@ $base = htmlspecialchars(rtrim($baseUrl, '/'), ENT_QUOTES, 'UTF-8');
         </button>
         <div id="menu" class="collapse navbar-collapse">
             <a class="nav-link text-white" href="<?= $base ?>/index.php">Home</a>
-            <?php if ($user): ?>
+            <?php if ($user['role'] === 'staff' && !$user['must_change']): ?>
+                <a class="nav-link text-white" href="<?= $base ?>/households/index.php">Households</a>
+            <?php endif; ?>
                 <form method="post" action="<?= $base ?>/logout.php">
                     <input type="hidden" name="token" value="<?= $_SESSION['token'] ?>">
                     <button class="btn btn-outline-light">Log out</button>
                 </form>
-            <?php endif; ?>
         </div>
     </div>
 </nav>
+<?php endif; ?>
 <main class="container py-5" id="main">

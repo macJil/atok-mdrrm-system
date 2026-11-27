@@ -21,3 +21,7 @@ The first implementation milestone is login, household CRUD and staff-led reside
 5. Visit the project root and change the temporary password. Staff can create other staff accounts, change account status, and issue new temporary passwords after identity verification. Resident enrollment from households comes in Phase 3.
 
 The login page verifies the saved password hash, renews the session ID and redirects by role. Shared session checks read the current account on each request. Password resets and status changes invalidate earlier sessions. The staff management page locks staff records during changes so at least one staff account remains active.
+
+## Household registry
+
+After importing foundation.sql, import database/households.sql in the rebuild database. Staff open Households to search by member name, barangay or written address. Add a household, add its members, then select an active member as representative. To replace the representative, select another member in the same household. Enrollment verifies residency and issues one resident login per member; hand over the temporary password privately. The sign-in page has no navigation bar.
