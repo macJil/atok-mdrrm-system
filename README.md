@@ -35,3 +35,7 @@ The optional image is validated using PHP fileinfo and image metadata. One JPEG,
 ## Emergency response
 
 Import database/response.sql after incidents.sql. Staff open Response teams on the dashboard to register a team, then review a pending incident on its detail page. Verify and assign dispatches the selected team immediately. Progress, cancellation, resumption and completion appear in dated staff history. Residents see the overall status when they refresh. Previously assigned teams can be deactivated after outstanding work ends; their history prevents permanent deletion.
+
+## Evacuation management
+
+Import database/evacuation.sql after households.sql. From the staff dashboard open Evacuation centers, add a center and select Manage stays. Household arrivals are saved as one transaction; checkout ends an individual stay. Search returning walk-ins by name before registering a new person. Occupancy is the number of stays without a checkout time. Closed centers accept no arrivals. History protects previously used centers from deletion.
