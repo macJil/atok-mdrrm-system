@@ -1,5 +1,5 @@
 <?php
-$base = htmlspecialchars(rtrim($settings['base_url'], '/'), ENT_QUOTES, 'UTF-8');
+$base = htmlspecialchars(rtrim($baseUrl, '/'), ENT_QUOTES, 'UTF-8');
 ?>
 <!doctype html>
 <html lang="en">

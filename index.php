@@ -2,7 +2,7 @@
 require_once __DIR__ . '/includes/session.php';
 $pageTitle = 'Service overview';
 try {
-    db()->query('SELECT 1')->fetchColumn();
+    $pdo->query('SELECT 1')->fetchColumn();
     $status = 'Database connected';
 } catch (PDOException $error) {
     http_response_code(503);

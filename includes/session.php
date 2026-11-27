@@ -8,9 +8,9 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
 function requireRole(string $role): void
 {
-    global $settings;
+    global $baseUrl;
     if (empty($_SESSION['user_id'])) {
-        header('Location: ' . $settings['base_url'] . '/index.php', true, 303);
+        header('Location: ' . $baseUrl . '/index.php', true, 303);
         exit;
     }
     if (!in_array($role, ['staff', 'resident'], true) || ($_SESSION['role'] ?? '') !== $role) {

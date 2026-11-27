@@ -1,30 +1,22 @@
 <?php
-// Default XAMPP settings. Individual machines can override them in config.local.php.
-$settings = [
-    'host' => '127.0.0.1',
-    'port' => 3306,
-    'database' => 'atok_mdrrm_rebuild',
-    'username' => 'root',
-    'password' => '',
-    'base_url' => '/atok-mdrrm-system',
-];
+$host = '127.0.0.1';
+$port = 3306;
+$database = 'atok_mdrrm_rebuild';
+$username = 'root';
+$password = '';
+$baseUrl = '/atok-mdrrm-system';
 
-if (is_file(__DIR__ . '/config.local.php')) {
-    $local = require __DIR__ . '/config.local.php';
-    $settings = array_replace($settings, $local);
+if (file_exists(__DIR__ . '/config.local.php')) {
+    require __DIR__ . '/config.local.php';
 }
 
-function db(): PDO
-{
-    global $settings;
-    static $connection = null;
-    if ($connection === null) {
-        $dsn = "mysql:host={$settings['host']};port={$settings['port']};dbname={$settings['database']};charset=utf8mb4";
-        $connection = new PDO($dsn, $settings['username'], $settings['password'], [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false,
-        ]);
-    }
-    return $connection;
+try {
+    $dsn = "mysql:host=$host;port=$port;dbname=$database;charset=utf8mb4";
+    $pdo = new PDO($dsn, $username, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    $pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+} catch (PDOException $error) {
+    http_response_code(503);
+    exit('Database unavailable. Check the local setup and refresh.');
 }
