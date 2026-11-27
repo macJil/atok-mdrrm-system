@@ -39,3 +39,11 @@ Import database/response.sql after incidents.sql. Staff open Response teams on t
 ## Evacuation management
 
 Import database/evacuation.sql after households.sql. From the staff dashboard open Evacuation centers, add a center and select Manage stays. Household arrivals are saved as one transaction; checkout ends an individual stay. Search returning walk-ins by name before registering a new person. Occupancy is the number of stays without a checkout time. Closed centers accept no arrivals. History protects previously used centers from deletion.
+
+## Municipal relief inventory
+
+Import database/relief_inventory.sql after foundation.sql. Open Relief inventory from the staff dashboard. Add a good with a unit and minimum quantity, then use Record or find a stock movement for deliveries and issues. The balance and history entry are saved together. The encoder comes from the signed-in staff account. Zero stock displays Out of stock; a positive balance at or below the minimum displays Low stock.
+
+## Page organization
+
+Keep request handling, prepared SQL and the form for a task together. Share the household form because both add and update use it. Share incident ownership checks because details, images, and report copies need identical permissions. Team maintenance stays on one page; evacuation lists and stays, and inventory goods and movements, have distinct pages. All modules use the same session checks, header and footer.
