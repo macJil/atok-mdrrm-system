@@ -1,0 +1,9 @@
+body { color: #172d3b; }
+.office-name { font-size: clamp(1.25rem, 3vw, 2rem); font-weight: 650; line-height: 1.2; }
+.navbar { background: #173f54; }
+.navbar-toggler, .btn, .form-control, .form-select { border-radius: 0; }
+.status-panel { border: 1px solid #b9c9cf; border-left: 4px solid #175b59; max-width: 48rem; }
+main > p { max-width: 65ch; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
+    outline: 3px solid #c85c00; outline-offset: 3px;
+}
