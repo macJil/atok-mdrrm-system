@@ -95,13 +95,19 @@ require __DIR__ . '/../includes/header.php';
 </form>
 <h2 class="h4 mt-4">Saved announcements</h2>
 <?php
-$total = (int)$pdo->query('SELECT COUNT(*) FROM announcements')->fetchColumn();
+$search = is_string($_GET['q'] ?? null) ? trim($_GET['q']) : '';
+$term = '%' . strtr($search, ['!'=>'!!', '%'=>'!%', '_'=>'!_']) . '%';
+$query = $pdo->prepare("SELECT COUNT(*) FROM announcements WHERE title LIKE ? ESCAPE '!'");
+$query->execute([$term]);
+$total = (int)$query->fetchColumn();
 $pages = max(1, (int)ceil($total / 10));
 $page = min($pages, max(1, (int)filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT)));
 $offset = ($page - 1) * 10;
-$rows = $pdo->query("SELECT id,title,status,show_on_login FROM announcements ORDER BY id DESC LIMIT 10 OFFSET $offset");
+$rows = $pdo->prepare("SELECT id,title,status,show_on_login FROM announcements WHERE title LIKE ? ESCAPE '!' ORDER BY id DESC LIMIT 10 OFFSET $offset");
+$rows->execute([$term]);
 ?>
-<?php if (!$total): ?><p>No announcements yet.</p><?php endif; ?>
+<form method="get"><label>Search titles <input class="form-control" name="q" value="<?= htmlspecialchars($search) ?>"></label> <button class="btn btn-outline-secondary">Search</button></form>
+<?php if (!$total): ?><p>No matching announcements.</p><?php endif; ?>
 <?php foreach ($rows as $row): ?>
     <p>
         <?= htmlspecialchars($row['title']) ?> · <?= htmlspecialchars($row['status']) ?>
@@ -109,6 +115,6 @@ $rows = $pdo->query("SELECT id,title,status,show_on_login FROM announcements ORD
         <a class="btn btn-outline-secondary" href="?id=<?= (int)$row['id'] ?>">Edit</a>
     </p>
 <?php endforeach; ?>
-<?php if ($page > 1): ?><a class="btn btn-outline-secondary" href="?page=<?= $page - 1 ?>">Previous</a><?php endif; ?>
-<?php if ($page < $pages): ?><a class="btn btn-outline-secondary" href="?page=<?= $page + 1 ?>">Next</a><?php endif; ?>
+<?php if ($page > 1): ?><a class="btn btn-outline-secondary" href="?q=<?= urlencode($search) ?>&amp;page=<?= $page - 1 ?>">Previous</a><?php endif; ?>
+<?php if ($page < $pages): ?><a class="btn btn-outline-secondary" href="?q=<?= urlencode($search) ?>&amp;page=<?= $page + 1 ?>">Next</a><?php endif; ?>
 <?php require __DIR__ . '/../includes/footer.php'; ?>

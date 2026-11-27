@@ -47,6 +47,64 @@ if (!$error) {
     $query->execute([$from,$through,$area,$area]);
     $goods = $query->fetchAll();
 }
+$export = $_GET['export'] ?? '';
+if (!$error && in_array($export, ['pdf','csv'], true)) {
+    $period = ($dates['from'] ?: 'Earliest record') . ' through ' . ($dates['through'] ?: 'latest record');
+    $place = $area ?: 'All barangays';
+    $rows = [['Households','Affected now','households',$affected]];
+    foreach ($centers as $center) {
+        foreach (['capacity'=>'Capacity now','staying'=>'Staying now','arrivals'=>'Period arrivals'] as $key=>$label) {
+            $rows[] = [$label,$center['name'],'people',$center[$key]];
+        }
+    }
+    foreach ($incidents as $row) {
+        $rows[] = ['Period incidents',$row['incident_type'].' / '.$row['status'],'reports',$row['total']];
+    }
+    foreach ($goods as $row) {
+        $rows[] = ['Period distributions',$row['name'],$row['unit'],$row['issued']];
+    }
+    if (!$centers) {
+        $rows[] = ['Centers','Registered','centers',0];
+    }
+    if (!$incidents) {
+        $rows[] = ['Period incidents','All types','reports',0];
+    }
+    if (!$goods) {
+        $rows[] = ['Period distributions','No recorded distributions','distributions',0];
+    }
+    if ($export === 'csv') {
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="atok-disaster-summary.csv"');
+        $file = fopen('php://output','wb');
+        fputcsv($file,['Barangay','Period','Measure','Record','Unit','Total'], ',', '"', '');
+        foreach ($rows as $row) {
+            $fields = array_merge([$place,$period],$row);
+            foreach ($fields as &$value) {
+                if (preg_match('/^\s*[=+@-]/u', (string)$value)) {
+                    $value = "'" . $value;
+                }
+            }
+            unset($value);
+            fputcsv($file,$fields, ',', '"', '');
+        }
+        fclose($file);
+    } else {
+        require_once __DIR__ . '/../includes/report_pdf.php';
+        $pdf = startOfficeReport('Disaster summary');
+        $pdf->lineText('Reference: ATOK-SUM / '.$place.' / '.$period);
+        $pdf->lineText('Current registry and occupancy are measured at generation. Period counts use the selected dates.');
+        $section = '';
+        foreach ($rows as [$measure,$record,$unit,$quantity]) {
+            if ($section !== $measure) {
+                $pdf->section($measure);
+                $section = $measure;
+            }
+            $pdf->lineText($record.'  |  '.$quantity.' '.$unit);
+        }
+        $pdf->Output('D','atok-disaster-summary.pdf');
+    }
+    exit;
+}
 $pageTitle = 'Disaster summaries';
 require __DIR__ . '/../includes/header.php';
 ?>
@@ -63,6 +121,10 @@ require __DIR__ . '/../includes/header.php';
 <?php if ($error): ?>
     <p role="alert"><?= htmlspecialchars($error) ?></p>
 <?php else: ?>
+    <p>
+        <a class="btn btn-outline-primary" href="?<?= htmlspecialchars(http_build_query($dates + ['barangay'=>$area,'export'=>'pdf'])) ?>">Download summary PDF</a>
+        <a class="btn btn-outline-secondary" href="?<?= htmlspecialchars(http_build_query($dates + ['barangay'=>$area,'export'=>'csv'])) ?>">Download totals CSV</a>
+    </p>
     <h2 class="h4">Affected households now: <?= (int)$affected ?></h2>
     <p>Based on the current household registry. The dates below apply to activity.</p>
     <h2 class="h4">Evacuation center occupancy and arrivals</h2>

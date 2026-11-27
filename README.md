@@ -16,9 +16,10 @@ The first implementation milestone is login, household CRUD and staff-led reside
 
 1. Place the folder in htdocs and start Apache and MySQL.
 2. Set host, port, username, password and base URL directly in config.php for your machine. Keep private settings local.
-3. For a fresh database, import the files in database/ in this order: foundation.sql, households.sql, incidents.sql, response.sql, evacuation.sql, relief_inventory.sql, relief_distribution.sql, announcements.sql, then map.sql. On an existing installation, apply only the missing stages.
-4. In a private terminal run `php database/initialize_staff.php your-office-email`. Give the one-time displayed password to the staff member privately.
-5. Visit the project root and change the temporary password. Staff can create other staff accounts, change account status, and issue new temporary passwords after identity verification. Staff enroll residents from household member details.
+3. Choose **one** full import in phpMyAdmin on a fresh database. Use `database/website.sql` for an empty installation or `database/presentation.sql` for the fictional classroom installation. Each file creates its own database and all tables. The older module scripts document incremental upgrades.
+4. Set `$database` in config.php to `atok_mdrrm_rebuild` or `atok_mdrrm_classroom` to match. Typical MySQL ports are 3306 on XAMPP and 8889 on MAMP. Set `$baseUrl` to the project folder with a leading slash. Use PHP 8.2+ with PDO MySQL, mbstring, fileinfo and iconv.
+5. For the empty installation run `php database/initialize_staff.php your-office-email` privately. For the classroom installation use the two fictional logins in the opening comments of presentation.sql. Keep classroom credentials and SQL files outside the published web directory for an operational site.
+6. Open the project in your browser (for standard MAMP, http://localhost:8888/atok-mdrrm-system/). The presentation, timed speaker notes, code walkthrough and acceptance record are in [submission](submission/). Both dashboards include the forecast and advisory link. Download an A4 incident report from its detail page, or a filtered PDF/CSV from Disaster summaries.
 
 The login page verifies the saved password hash, renews the session ID and redirects by role. Shared session checks read the current account on each request. Password resets and status changes invalidate earlier sessions. The staff management page locks staff records during changes so at least one staff account remains active.
 

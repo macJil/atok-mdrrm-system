@@ -73,4 +73,5 @@ $attention = $pdo->query('SELECT COUNT(*) FROM relief_goods WHERE balance<=minim
 <a class="btn btn-primary" href="../response/teams.php">Response teams</a>
 <a class="btn btn-primary" href="../households/index.php">Household registry</a>
 <a class="btn btn-primary" href="../accounts/index.php">Manage accounts</a>
+<?php require __DIR__ . '/../includes/weather.php'; ?>
 <?php require __DIR__ . '/../includes/footer.php'; ?>

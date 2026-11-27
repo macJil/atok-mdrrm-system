@@ -88,11 +88,35 @@ require __DIR__ . '/../includes/header.php';
     </form>
     <a class="btn btn-outline-secondary" href="teams.php">Return to teams</a>
 <?php else: ?>
-    <table class="table"><thead><tr><th>Team</th><th>Mobile</th><th>Availability</th><th>Action</th></tr></thead><tbody>
-        <?php foreach ($pdo->query('SELECT * FROM response_teams ORDER BY name') as $row): ?>
+
+<?php
+$search = is_string($_GET['q'] ?? null) ? trim($_GET['q']) : '';
+$term = '%' . strtr($search, ['!' => '!!', '%' => '!%', '_' => '!_']) . '%';
+$where = " WHERE name LIKE ? ESCAPE '!'";
+$args = [$term];
+$query = $pdo->prepare('SELECT COUNT(*) FROM response_teams' . $where);
+$query->execute($args);
+$total = (int)$query->fetchColumn();
+$pages = max(1, (int)ceil($total / 10));
+$page = min($pages, max(1, (int)filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT)));
+$offset = ($page - 1) * 10;
+$query = $pdo->prepare('SELECT * FROM response_teams' . $where . " ORDER BY name LIMIT 10 OFFSET $offset");
+$query->execute($args);
+?>
+<form method="get" class="mb-3">
+    <label>Search team name<input class="form-control" name="q" value="<?= htmlspecialchars($search) ?>"></label>
+    <button class="btn btn-outline-secondary">Search</button>
+</form>
+<p><?= $total ?> matching records · Page <?= $page ?> of <?= $pages ?></p>
+    <div class="table-responsive"><table class="table"><thead><tr><th>Team</th><th>Mobile</th><th>Availability</th><th>Action</th></tr></thead><tbody>
+        <?php foreach ($query as $row): ?>
             <tr><td><?= htmlspecialchars($row['name']) ?></td><td><?= htmlspecialchars($row['contact_phone']) ?></td><td><?= $row['active'] ? 'Active' : 'Inactive' ?></td>
                 <td><a class="btn btn-outline-secondary" href="?id=<?= (int)$row['id'] ?>">Edit</a></td></tr>
         <?php endforeach; ?>
-    </tbody></table>
+    </tbody></table></div>
+<?php if ($page > 1): ?><a class="btn btn-outline-secondary" href="?q=<?= urlencode($search) ?>&amp;page=<?= $page-1 ?>">Previous</a><?php endif; ?>
+<?php if ($page < $pages): ?><a class="btn btn-outline-secondary" href="?q=<?= urlencode($search) ?>&amp;page=<?= $page+1 ?>">Next</a><?php endif; ?>
+
 <?php endif; ?>
+<a class="btn btn-outline-secondary my-2" href="../dashboard/staff.php">Return to dashboard</a>
 <?php require __DIR__ . '/../includes/footer.php'; ?>

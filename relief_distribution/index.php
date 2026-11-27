@@ -202,17 +202,26 @@ require __DIR__ . '/../includes/header.php';
     </form>
     <h2 id="history" class="h4 mt-4">Distribution history</h2>
     <?php
-    $total = (int)$pdo->query('SELECT COUNT(*) FROM relief_distributions')->fetchColumn();
+    $search = is_string($_GET['q'] ?? null) ? trim($_GET['q']) : '';
+    $term = '%' . strtr($search, ['!'=>'!!','%'=>'!%','_'=>'!_']) . '%';
+    $filter = " WHERE d.receiver LIKE ? ESCAPE '!' OR p.name LIKE ? ESCAPE '!'";
+    $query = $pdo->prepare('SELECT COUNT(*) FROM relief_distributions d JOIN relief_points p ON p.id=d.point_id' . $filter);
+    $query->execute([$term,$term]);
+    $total = (int)$query->fetchColumn();
     $pages = max(1,(int)ceil($total/10));
     $page = min($pages,max(1,(int)filter_input(INPUT_GET,'page',FILTER_VALIDATE_INT)));
     $offset = ($page-1)*10;
-    if (!$total): ?><p>No distributions recorded.</p><?php endif; ?>
-    <?php foreach ($pdo->query($historySql . " ORDER BY d.id DESC LIMIT 10 OFFSET $offset") as $entry): ?>
+    $history = $pdo->prepare($historySql . $filter . " ORDER BY d.id DESC LIMIT 10 OFFSET $offset");
+    $history->execute([$term,$term]);
+    ?>
+    <form method="get" action="#history"><label>Find receiver or relief point<input class="form-control" name="q" value="<?= htmlspecialchars($search) ?>"></label> <button class="btn btn-outline-secondary">Search</button></form>
+    <?php if (!$total): ?><p>No matching distributions.</p><?php endif; ?>
+    <?php foreach ($history as $entry): ?>
         <p><?= htmlspecialchars($entry['distributed_at'].' · '.$entry['receiver'].' · '.$entry['point_name']) ?>
             <a class="btn btn-outline-secondary" href="?receipt=<?= (int)$entry['id'] ?>">View receipt</a>
         </p>
     <?php endforeach; ?>
-    <?php if ($page>1): ?><a href="?page=<?= $page-1 ?>#history">Previous</a><?php endif; ?>
-    <?php if ($page<$pages): ?><a href="?page=<?= $page+1 ?>#history">Next</a><?php endif; ?>
+    <?php if ($page>1): ?><a href="?q=<?= urlencode($search) ?>&amp;page=<?= $page-1 ?>#history">Previous</a><?php endif; ?>
+    <?php if ($page<$pages): ?><a href="?q=<?= urlencode($search) ?>&amp;page=<?= $page+1 ?>#history">Next</a><?php endif; ?>
 <?php endif; ?>
 <?php require __DIR__ . '/../includes/footer.php'; ?>

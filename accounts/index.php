@@ -72,7 +72,27 @@ require __DIR__ . '/../includes/header.php';
     <button class="btn btn-primary" name="action" value="create">Create staff account</button>
 </form>
 <h2 class="h4 mt-4">Accounts</h2>
-<?php foreach ($pdo->query('SELECT id,full_name,email,role,active FROM accounts ORDER BY full_name,id') as $row): ?>
+<?php
+$search = is_string($_GET['q'] ?? null) ? trim($_GET['q']) : '';
+$term = '%' . strtr($search, ['!' => '!!', '%' => '!%', '_' => '!_']) . '%';
+$where = " WHERE full_name LIKE ? ESCAPE '!' OR email LIKE ? ESCAPE '!'";
+$args = [$term, $term];
+$query = $pdo->prepare('SELECT COUNT(*) FROM accounts' . $where);
+$query->execute($args);
+$total = (int)$query->fetchColumn();
+$pages = max(1, (int)ceil($total / 10));
+$page = min($pages, max(1, (int)filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT)));
+$offset = ($page - 1) * 10;
+$query = $pdo->prepare('SELECT id,full_name,email,role,active FROM accounts' . $where . " ORDER BY full_name,id LIMIT 10 OFFSET $offset");
+$query->execute($args);
+?>
+<form method="get" class="mb-3">
+    <label>Search name or email<input class="form-control" name="q" value="<?= htmlspecialchars($search) ?>"></label>
+    <button class="btn btn-outline-secondary">Search</button>
+</form>
+<p><?= $total ?> matching records · Page <?= $page ?> of <?= $pages ?></p>
+
+<?php foreach ($query as $row): ?>
     <section class="border-top py-3">
         <h3 class="h5"><?= htmlspecialchars($row['full_name']) ?></h3>
         <p><?= htmlspecialchars($row['email']) ?> · <?= htmlspecialchars($row['role']) ?> · <?= $row['active'] ? 'Active' : 'Inactive' ?></p>
@@ -87,4 +107,7 @@ require __DIR__ . '/../includes/header.php';
         </form>
     </section>
 <?php endforeach; ?>
+<?php if ($page > 1): ?><a class="btn btn-outline-secondary" href="?q=<?= urlencode($search) ?>&amp;page=<?= $page-1 ?>">Previous</a><?php endif; ?>
+<?php if ($page < $pages): ?><a class="btn btn-outline-secondary" href="?q=<?= urlencode($search) ?>&amp;page=<?= $page+1 ?>">Next</a><?php endif; ?>
+<a class="btn btn-outline-secondary my-2" href="../dashboard/staff.php">Return to dashboard</a>
 <?php require __DIR__ . '/../includes/footer.php'; ?>
