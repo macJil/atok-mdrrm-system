@@ -17,6 +17,11 @@ function posted(string $field): string
     return is_string($_POST[$field] ?? null) ? $_POST[$field] : '';
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$_POST && !$_FILES && str_starts_with($_SERVER['CONTENT_TYPE'] ?? '', 'multipart/form-data') && (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+    http_response_code(413);
+    exit('Upload could not be processed. Return to the form and choose an image no larger than 2 MiB.');
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($_SESSION['token'], posted('token'))) {
     http_response_code(403);
     exit('Please reopen the form and try again.');

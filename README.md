@@ -25,3 +25,9 @@ The login page verifies the saved password hash, renews the session ID and redir
 ## Household registry
 
 After importing foundation.sql, import database/households.sql in the rebuild database. Staff open Households to search by member name, barangay or written address. Add a household, add its members, then select an active member as representative. To replace the representative, select another member in the same household. Enrollment verifies residency and issues one resident login per member; hand over the temporary password privately. The sign-in page has no navigation bar.
+
+## Incident reporting
+
+Run database/incidents.sql once after households.sql. Enrollment can now record the resident’s own mobile number. Older accounts can enter a contact number when reporting. Report-specific changes stay with the report. Staff use phone or walk-in intake. Each report receives a reference and a submission timestamp.
+
+The optional image is validated using PHP fileinfo and image metadata. One JPEG, PNG or WebP of up to 2 MiB is stored privately in MySQL with its incident in one transaction. The report, image and print-format page share the same staff/owner permission check. Set upload_max_filesize to at least 2M and post_max_size above that limit. Dashboard status updates and optional map selection belong to later phases.

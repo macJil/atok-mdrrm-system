@@ -25,6 +25,9 @@ $base = htmlspecialchars(rtrim($baseUrl, '/'), ENT_QUOTES, 'UTF-8');
         </button>
         <div id="menu" class="collapse navbar-collapse">
             <a class="nav-link text-white" href="<?= $base ?>/index.php">Home</a>
+            <?php if (!$user['must_change']): ?>
+                <a class="nav-link text-white" href="<?= $base ?>/incidents/index.php"><?= $user['role'] === 'staff' ? 'Incident reports' : 'My reports' ?></a>
+            <?php endif; ?>
             <?php if ($user['role'] === 'staff' && !$user['must_change']): ?>
                 <a class="nav-link text-white" href="<?= $base ?>/households/index.php">Households</a>
             <?php endif; ?>

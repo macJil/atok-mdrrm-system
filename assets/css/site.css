@@ -7,3 +7,10 @@ main > p { max-width: 65ch; }
 a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
     outline: 3px solid #c85c00; outline-offset: 3px;
 }
+
+.report-copy { max-width: 180mm; margin: 2rem auto; padding: 1rem; font-family: Arial, sans-serif; overflow-wrap: anywhere; }
+.report-copy header { border-bottom: 2px solid; padding-bottom: 1rem; }
+.report-copy table { border-collapse: collapse; width: 100%; }
+.report-copy th, .report-copy td { border: 1px solid #aaa; padding: .5rem; text-align: left; }
+@media print { .screen-only { display: none; } .report-copy { margin: 0; } }
+@page { size: A4; margin: 18mm; }

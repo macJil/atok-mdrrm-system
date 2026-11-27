@@ -16,16 +16,19 @@ if (!$member) {
 }
 $error = '';
 $email = trim(posted('email'));
+$phone = trim(posted('phone'));
 if (!$member['active'] || $member['account_id']) {
     $error = 'Enrollment requires an active member without an existing account.';
 } elseif ($saving) {
     if (posted('verified') !== 'yes' || strlen($email) > 254 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Confirm residency and enter a valid login email.';
+    } elseif ($phone !== '' && !preg_match('/^(?:09[0-9]{9}|[+]639[0-9]{9})$/D', $phone)) {
+        $error = 'Enter a valid mobile number or leave it blank.';
     } else {
         try {
             $temporary = bin2hex(random_bytes(12));
-            $query = $pdo->prepare("INSERT INTO accounts(full_name,email,password_hash,role) VALUES(?,?,?,'resident')");
-            $query->execute([$member['full_name'],$email,password_hash($temporary,PASSWORD_DEFAULT)]);
+            $query = $pdo->prepare("INSERT INTO accounts(full_name,email,password_hash,phone,role) VALUES(?,?,?,?,'resident')");
+            $query->execute([$member['full_name'],$email,password_hash($temporary,PASSWORD_DEFAULT),$phone ?: null]);
             $query = $pdo->prepare('INSERT INTO resident_enrollments(member_id,account_id) VALUES(?,?)');
             $query->execute([$member['id'],$pdo->lastInsertId()]);
             $pdo->commit();
@@ -49,6 +52,7 @@ require __DIR__ . '/../includes/header.php';
     <form method="post" class="col-md-6">
         <input type="hidden" name="token" value="<?= $_SESSION['token'] ?>">
         <label class="d-block mb-2">Login email<input class="form-control" type="email" name="email" required value="<?= h($email) ?>"></label>
+        <label class="d-block mb-2">Resident mobile number (optional)<input class="form-control" name="phone" type="tel" maxlength="13" value="<?= h($phone) ?>"></label>
         <label class="d-block mb-2"><input type="checkbox" name="verified" value="yes" required> I verified this person's identity and Atok residency.</label>
         <button class="btn btn-primary">Issue resident account</button>
     </form>
