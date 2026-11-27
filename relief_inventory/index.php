@@ -56,6 +56,7 @@ require __DIR__ . '/../includes/header.php';
 ?>
 <h1>Municipal relief inventory</h1>
 <a class="btn btn-primary" href="movements.php">Record or find a stock movement</a>
+<a class="btn btn-outline-primary" href="../relief_distribution/index.php">Distribute goods</a>
 <?php if (!$editing):
     $search = is_string($_GET['q'] ?? null) ? trim($_GET['q']) : '';
     $term = '%' . strtr($search, ['!'=>'!!','%'=>'!%','_'=>'!_']) . '%';

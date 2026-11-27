@@ -9,7 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $query->execute([$id]);
         go('households/index.php');
     } catch (PDOException $exception) {
-        $error = 'This household could not be deleted. Households with member records must be retained.';
+        $error = 'This household could not be deleted. Households linked to members or relief distributions must be retained.';
     }
 }
 $pageTitle = 'Delete household';

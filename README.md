@@ -47,3 +47,7 @@ Import database/relief_inventory.sql after foundation.sql. Open Relief inventory
 ## Page organization
 
 Keep request handling, prepared SQL and the form for a task together. Share the household form because both add and update use it. Share incident ownership checks because details, images, and report copies need identical permissions. Team maintenance stays on one page; evacuation lists and stays, and inventory goods and movements, have distinct pages. All modules use the same session checks, header and footer.
+
+## Household relief distribution
+
+Import database/relief_distribution.sql after households.sql and relief_inventory.sql. Open Relief distribution on the staff dashboard, register a relief point, select an affected household, enter the actual receiver and choose quantities. One POST saves the distribution, receipt lines and municipal stock movements together. History opens the receipt for each issue.
