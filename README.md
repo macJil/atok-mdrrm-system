@@ -12,25 +12,12 @@ Use a text municipal masthead, square-cornered controls, Bootstrap tables and re
 
 The first implementation milestone is login, household CRUD and staff-led resident enrollment.
 
-## Run Phase 1 locally
+## Local setup
 
-1. Put this repository in your web server's htdocs folder under the name `atok-mdrrm-system`. Start Apache and MySQL. Enable PHP PDO and pdo_mysql.
-2. Import `database/foundation.sql` in phpMyAdmin with an account allowed to create databases. This creates a separate empty rebuild database. User tables arrive in Phase 2.
-3. Check `config.php`. To override settings on your machine, create an ignored `config.local.php` beside it. For default MAMP installations the contents are:
+1. Place the folder in htdocs and start Apache and MySQL.
+2. Set host, port, username, password and base URL directly in config.php for your machine. Keep private settings local.
+3. Import database/foundation.sql. Existing Phase 1 databases can run the same script to add the accounts table.
+4. In a private terminal run `php database/initialize_staff.php your-office-email`. Give the one-time displayed password to the staff member privately.
+5. Visit the project root and change the temporary password. Staff can create other staff accounts, change account status, and issue new temporary passwords after identity verification. Resident enrollment from households comes in Phase 3.
 
-   ```php
-   <?php
-   $port = 8889;
-   $password = 'root';
-   ```
-
-   Use your actual credentials. XAMPP commonly uses port 3306. If the folder name differs, set `$baseUrl` with its URL path.
-4. Open http://localhost:8888/atok-mdrrm-system/ on MAMP or http://localhost/atok-mdrrm-system/ on XAMPP. Confirm **Database connected**. On a narrow screen open Menu and select Service status. Use Tab to check the keyboard focus outline.
-
-## Explain the shared files
-
-- `index.php` checks the selected database with SELECT 1 and displays a controlled message on failure.
-- `config.php` reads local settings and opens one PDO connection named `$pdo`. Following MG Lab 2, it builds a MySQL connection inside a try/catch. Like the CRUD exercises, pages include the connection file once and use the connection variable directly.
-- `includes/session.php` starts the session before output. Future protected pages call requireRole('staff') or requireRole('resident') before handling a request.
-- `includes/header.php` and `includes/footer.php` supply navigation and load the bundled Bootstrap assets.
-- `assets/css/site.css` sets the municipal colors, square controls and keyboard focus. Bootstrap handles the responsive grid and menu.
+The login page verifies the saved password hash, renews the session ID and redirects by role. Shared session checks read the current account on each request. Password resets and status changes invalidate earlier sessions. The staff management page locks staff records during changes so at least one staff account remains active.

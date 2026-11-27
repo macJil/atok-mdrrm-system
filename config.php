@@ -6,10 +6,6 @@ $username = 'root';
 $password = '';
 $baseUrl = '/atok-mdrrm-system';
 
-if (file_exists(__DIR__ . '/config.local.php')) {
-    require __DIR__ . '/config.local.php';
-}
-
 try {
     $dsn = "mysql:host=$host;port=$port;dbname=$database;charset=utf8mb4";
     $pdo = new PDO($dsn, $username, $password);

@@ -23,7 +23,13 @@ $base = htmlspecialchars(rtrim($baseUrl, '/'), ENT_QUOTES, 'UTF-8');
             <span class="navbar-toggler-icon"></span>
         </button>
         <div id="menu" class="collapse navbar-collapse">
-            <a class="nav-link text-white" href="#service-status">Service status</a>
+            <a class="nav-link text-white" href="<?= $base ?>/index.php">Home</a>
+            <?php if ($user): ?>
+                <form method="post" action="<?= $base ?>/logout.php">
+                    <input type="hidden" name="token" value="<?= $_SESSION['token'] ?>">
+                    <button class="btn btn-outline-light">Log out</button>
+                </form>
+            <?php endif; ?>
         </div>
     </div>
 </nav>

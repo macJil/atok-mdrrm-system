@@ -1,19 +1,33 @@
 <?php
-require_once __DIR__ . '/includes/session.php';
-$pageTitle = 'Service overview';
-try {
-    $pdo->query('SELECT 1')->fetchColumn();
-    $status = 'Database connected';
-} catch (PDOException $error) {
-    http_response_code(503);
-    $status = 'Database unavailable. Check the local setup and refresh.';
+require __DIR__ . '/includes/session.php';
+if ($user) {
+    go($user['must_change'] ? 'change_password.php' : 'dashboard/' . $user['role'] . '.php');
 }
+$error = '';
+$email = trim(posted('email'));
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $query = $pdo->prepare('SELECT * FROM accounts WHERE email=? AND active=1');
+    $query->execute([$email]);
+    $account = $query->fetch();
+    if ($account && password_verify(posted('password'), $account['password_hash'])) {
+        session_regenerate_id(true);
+        $_SESSION['user_id'] = $account['id'];
+        $_SESSION['version'] = (int)$account['session_version'];
+        $_SESSION['token'] = bin2hex(random_bytes(32));
+        go('index.php');
+    }
+    $error = 'Email or password is incorrect, or the account is inactive.';
+}
+$pageTitle = 'Sign in';
 require __DIR__ . '/includes/header.php';
 ?>
-<h1>Service overview</h1>
-<p>This system is being prepared for incident reporting, evacuation monitoring and relief coordination across Atok.</p>
-<section id="service-status" class="status-panel mt-4 p-3" aria-labelledby="status-title">
-    <h2 id="status-title" class="h5">Service status</h2>
-    <p class="mb-0"><?= htmlspecialchars($status) ?></p>
-</section>
+<h1>Sign in</h1>
+<?php if ($error): ?><p role="alert"><?= htmlspecialchars($error) ?></p><?php endif; ?>
+<form method="post" class="col-md-6">
+    <input type="hidden" name="token" value="<?= $_SESSION['token'] ?>">
+    <label class="d-block mb-3">Email<input class="form-control" name="email" type="email" value="<?= htmlspecialchars($email) ?>" required autocomplete="username"></label>
+    <label class="d-block mb-3">Password<input class="form-control" name="password" type="password" required autocomplete="current-password"></label>
+    <button class="btn btn-primary">Sign in</button>
+</form>
+<p class="mt-3">Forgot your password? Contact MDRRMO staff to verify your identity and request a temporary password.</p>
 <?php require __DIR__ . '/includes/footer.php'; ?>
