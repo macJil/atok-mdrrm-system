@@ -62,6 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $query->execute($values);
         if ($id && !$query->rowCount()) {
             $_SESSION['announcement_conflict'] = 'This notice changed. Review the latest version before trying again.';
+            go('announcement.php?id=' . $id);
         }
         $created = !$id;
         if ($created) {

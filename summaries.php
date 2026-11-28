@@ -44,14 +44,6 @@ if (!$error) {
         GROUP BY registry_reason,vulnerability ORDER BY registry_reason,vulnerability");
     $query->execute([$area,$area]);
     $householdDetails = $query->fetchAll();
-    $query = $pdo->prepare("SELECT h.barangay,h.address,h.registry_reason,h.vulnerability,m.full_name AS representative
-        FROM households h
-        LEFT JOIN household_representatives r ON r.household_id=h.id
-        LEFT JOIN household_members m ON m.id=r.member_id
-        WHERE h.registry_reason IN ('Affected','Monitored and affected') AND (?='' OR h.barangay=?)
-        ORDER BY h.barangay,h.address,h.id");
-    $query->execute([$area,$area]);
-    $affectedHouseholds = $query->fetchAll();
     [$arrivalRange, $arrivalArgs] = $dateRange('arrived_at');
     $query = $pdo->prepare("SELECT c.name,c.barangay,c.status,c.capacity,
         COALESCE(current_stays.staying,0) AS staying,COALESCE(period_arrivals.arrivals,0) AS arrivals
@@ -68,12 +60,6 @@ if (!$error) {
         WHERE $incidentRange AND (?='' OR barangay=?) GROUP BY incident_type,status ORDER BY incident_type,status");
     $query->execute([...$incidentArgs,$area,$area]);
     $incidents = $query->fetchAll();
-    [$incidentDetailRange, $incidentDetailArgs] = $dateRange('reported_at');
-    $query = $pdo->prepare("SELECT id,incident_type,status,barangay,location,description,contact_name,contact_phone,source,reported_at
-        FROM incidents WHERE $incidentDetailRange AND (?='' OR barangay=?)
-        ORDER BY reported_at DESC,id DESC");
-    $query->execute([...$incidentDetailArgs,$area,$area]);
-    $incidentDetails = $query->fetchAll();
     [$goodsRange, $goodsArgs] = $dateRange('d.distributed_at');
     $query = $pdo->prepare("SELECT g.name,g.unit,SUM(i.quantity) AS issued FROM distribution_items i
         JOIN relief_goods g ON g.id=i.good_id JOIN relief_distributions d ON d.id=i.distribution_id
@@ -94,6 +80,81 @@ if (!$error) {
         FROM relief_distributions WHERE $distributionSummaryRange AND (?='' OR barangay_at_issue=?)");
     $query->execute([...$distributionSummaryArgs,$area,$area]);
     $distributionSummary = $query->fetch();
+    [$unconfirmedRange, $unconfirmedArgs] = $dateRange('distributed_at');
+    $query = $pdo->prepare("SELECT COUNT(*) FROM relief_distributions WHERE barangay_at_issue IS NULL AND $unconfirmedRange");
+    $query->execute($unconfirmedArgs);
+    $unconfirmed = (int)$query->fetchColumn();
+}
+$export = $_GET['export'] ?? '';
+if (!$error && $export === 'pdf') {
+    $period = ($dates['from'] ?: 'Earliest record') . ' through ' . ($dates['through'] ?: 'latest record');
+    $place = $area ?: 'All barangays';
+    require_once __DIR__ . '/includes/report_pdf.php';
+    $pdf = startOfficeReport('Disaster summary');
+    $pdf->fields(['Report reference'=>'ATOK-SUM', 'Barangay'=>$place, 'Selected period'=>$period]);
+    $pdf->lineText('Current registry and occupancy are measured at generation. Period counts use the selected dates.');
+    $pdf->section('I. Affected households');
+    $pdf->lineText('Registered as affected now: ' . $affected);
+    foreach ($householdDetails as $row) {
+        $pdf->fields(['Registry classification'=>$row['registry_reason'], 'Additional assistance'=>$row['vulnerability'], 'Households'=>$row['total']]);
+    }
+    if (!$householdDetails) {
+        $pdf->lineText('No affected household records in this selection.');
+    }
+    $pdf->section('II. Evacuation center occupancy');
+    foreach ($centers as $center) {
+        $pdf->fields(['Center'=>$center['name'], 'Barangay'=>$center['barangay'], 'Status'=>$center['status']]);
+        $pdf->fields(['Person capacity'=>$center['capacity'], 'People staying now'=>$center['staying'], 'Arrivals in period'=>$center['arrivals']]);
+    }
+    if (!$centers) {
+        $pdf->lineText('No centers registered for this selection.');
+    }
+    $pdf->section('III. Incidents reported during the period');
+    foreach ($incidents as $row) {
+        $pdf->fields(['Incident type / status'=>$row['incident_type'].' / '.$row['status'], 'Reports'=>$row['total']]);
+    }
+    if (!$incidents) {
+        $pdf->lineText('Reports during the period: 0');
+    }
+    $pdf->section('IV. Distribution activity by location');
+    $pdf->fields(['Receipts'=>$distributionSummary['receipts'], 'Households issued aid'=>$distributionSummary['households']]);
+    foreach ($distributionPoints as $row) {
+        $pdf->fields(['Distribution point'=>$row['name'], 'Barangay'=>$row['barangay'] ?? 'Unconfirmed',
+            'Receipts / households'=>$row['receipts'].' / '.$row['households']]);
+    }
+    if (!$distributionPoints) {
+        $pdf->lineText('No distribution receipts for this selection.');
+    }
+    $pdf->section('V. Relief goods distributed during the period');
+    foreach ($goods as $row) {
+        $pdf->lineText($row['name'].': '.$row['issued'].' '.$row['unit']);
+    }
+    if (!$goods) {
+        $pdf->lineText('Recorded distributions for this selection: 0');
+    }
+    if ($unconfirmed) {
+        $pdf->lineText('Municipal distributions with unconfirmed barangay (included only in All barangays): '.$unconfirmed);
+    }
+    $pdf->signatureBlock(['Prepared by', 'Reviewed by', 'Approved by']);
+    $pdf->Output('I','atok-disaster-summary.pdf');
+    exit;
+}
+// Individual records are for the guarded staff screen only.
+if (!$error) {
+    $query = $pdo->prepare("SELECT h.barangay,h.address,h.registry_reason,h.vulnerability,m.full_name AS representative
+        FROM households h
+        LEFT JOIN household_representatives r ON r.household_id=h.id
+        LEFT JOIN household_members m ON m.id=r.member_id
+        WHERE h.registry_reason IN ('Affected','Monitored and affected') AND (?='' OR h.barangay=?)
+        ORDER BY h.barangay,h.address,h.id");
+    $query->execute([$area,$area]);
+    $affectedHouseholds = $query->fetchAll();
+    [$incidentDetailRange, $incidentDetailArgs] = $dateRange('reported_at');
+    $query = $pdo->prepare("SELECT id,incident_type,status,barangay,location,description,contact_name,contact_phone,source,reported_at
+        FROM incidents WHERE $incidentDetailRange AND (?='' OR barangay=?)
+        ORDER BY reported_at DESC,id DESC");
+    $query->execute([...$incidentDetailArgs,$area,$area]);
+    $incidentDetails = $query->fetchAll();
     [$distributionRecordRange, $distributionRecordArgs] = $dateRange('d.distributed_at');
     $query = $pdo->prepare("SELECT d.id,d.distributed_at,d.receiver,d.barangay_at_issue,h.address,
             p.name AS point_name,m.full_name AS representative,g.name AS good_name,g.unit,i.quantity
@@ -125,101 +186,6 @@ if (!$error) {
             $distributionRecords[$id]['goods'][] = $row['good_name'] . ' · ' . $row['quantity'] . ' ' . $row['unit'];
         }
     }
-    [$unconfirmedRange, $unconfirmedArgs] = $dateRange('distributed_at');
-    $query = $pdo->prepare("SELECT COUNT(*) FROM relief_distributions WHERE barangay_at_issue IS NULL AND $unconfirmedRange");
-    $query->execute($unconfirmedArgs);
-    $unconfirmed = (int)$query->fetchColumn();
-}
-$export = $_GET['export'] ?? '';
-if (!$error && $export === 'pdf') {
-    $period = ($dates['from'] ?: 'Earliest record') . ' through ' . ($dates['through'] ?: 'latest record');
-    $place = $area ?: 'All barangays';
-    require_once __DIR__ . '/includes/report_pdf.php';
-    $pdf = startOfficeReport('Disaster summary');
-    $pdf->fields(['Report reference'=>'ATOK-SUM', 'Barangay'=>$place, 'Selected period'=>$period]);
-    $pdf->lineText('Current registry and occupancy are measured at generation. Period counts use the selected dates.');
-    $pdf->section('I. Affected households');
-    $pdf->lineText('Registered as affected now: ' . $affected);
-    foreach ($householdDetails as $row) {
-        $pdf->fields(['Registry classification'=>$row['registry_reason'], 'Additional assistance'=>$row['vulnerability'], 'Households'=>$row['total']]);
-    }
-    if (!$householdDetails) {
-        $pdf->lineText('No affected household records in this selection.');
-    }
-    $pdf->section('Affected household register');
-    if (!$affectedHouseholds) {
-        $pdf->lineText('No households are currently classified as affected in this selection.');
-    }
-    foreach ($affectedHouseholds as $household) {
-        $pdf->fields(['Representative'=>$household['representative'] ?? 'Not selected',
-            'Barangay'=>$household['barangay'], 'Registry status'=>$household['registry_reason']]);
-        $pdf->lineText('Address: ' . $household['address']);
-        $pdf->lineText('Assistance assessment: ' . $household['vulnerability']);
-        $pdf->Ln(2);
-    }
-    $pdf->section('II. Evacuation center occupancy');
-    foreach ($centers as $center) {
-        $pdf->fields(['Center'=>$center['name'], 'Barangay'=>$center['barangay'], 'Status'=>$center['status']]);
-        $pdf->fields(['Person capacity'=>$center['capacity'], 'People staying now'=>$center['staying'], 'Arrivals in period'=>$center['arrivals']]);
-    }
-    if (!$centers) {
-        $pdf->lineText('No centers registered for this selection.');
-    }
-    $pdf->section('III. Incidents reported during the period');
-    foreach ($incidents as $row) {
-        $pdf->fields(['Incident type / status'=>$row['incident_type'].' / '.$row['status'], 'Reports'=>$row['total']]);
-    }
-    if (!$incidents) {
-        $pdf->lineText('Reports during the period: 0');
-    }
-    $pdf->section('Incident report details');
-    if (!$incidentDetails) {
-        $pdf->lineText('No incident report details for this period.');
-    }
-    foreach ($incidentDetails as $incident) {
-        $reference = 'ATOK-IR-' . substr($incident['reported_at'], 0, 4) . '-' . str_pad($incident['id'], 4, '0', STR_PAD_LEFT);
-        $pdf->section($reference);
-        $pdf->fields(['Reported'=>$incident['reported_at'], 'Incident type'=>$incident['incident_type'], 'Status'=>$incident['status']]);
-        $pdf->lineText('Barangay: ' . ($incident['barangay'] ?? 'Awaiting confirmation'));
-        $pdf->lineText('Location: ' . $incident['location']);
-        $pdf->lineText('Reporter: ' . $incident['contact_name'] . ' · ' . $incident['contact_phone'] . ' · ' . $incident['source']);
-        $pdf->lineText('Description: ' . $incident['description']);
-        $pdf->Ln(2);
-    }
-    $pdf->section('IV. Distribution activity by location');
-    $pdf->fields(['Receipts'=>$distributionSummary['receipts'], 'Households issued aid'=>$distributionSummary['households']]);
-    foreach ($distributionPoints as $row) {
-        $pdf->fields(['Distribution point'=>$row['name'], 'Barangay'=>$row['barangay'] ?? 'Unconfirmed',
-            'Receipts / households'=>$row['receipts'].' / '.$row['households']]);
-    }
-    if (!$distributionPoints) {
-        $pdf->lineText('No distribution receipts for this selection.');
-    }
-    $pdf->section('Distribution receipt details');
-    if (!$distributionRecords) {
-        $pdf->lineText('No itemized distribution receipts for this selection.');
-    }
-    foreach ($distributionRecords as $index => $record) {
-        $pdf->fields(['Receipt'=>'ATOK-RD-' . str_pad((string)$index, 5, '0', STR_PAD_LEFT),
-            'Date'=>$record['distributed_at'], 'Barangay'=>$record['barangay'] ?? 'Unconfirmed']);
-        $pdf->lineText('Household: ' . ($record['representative'] ?? 'Representative not selected') . ' · ' . $record['address']);
-        $pdf->lineText('Received by: ' . $record['receiver'] . ' · Distribution point: ' . $record['point_name']);
-        $pdf->lineText('Goods issued: ' . implode('; ', $record['goods']));
-        $pdf->Ln(2);
-    }
-    $pdf->section('V. Relief goods distributed during the period');
-    foreach ($goods as $row) {
-        $pdf->lineText($row['name'].': '.$row['issued'].' '.$row['unit']);
-    }
-    if (!$goods) {
-        $pdf->lineText('Recorded distributions for this selection: 0');
-    }
-    if ($unconfirmed) {
-        $pdf->lineText('Municipal distributions with unconfirmed barangay (included only in All barangays): '.$unconfirmed);
-    }
-    $pdf->signatureBlock(['Prepared by', 'Reviewed by', 'Approved by']);
-    $pdf->Output('I','atok-disaster-summary.pdf');
-    exit;
 }
 $pageTitle = 'Disaster summaries';
 require __DIR__ . '/includes/header.php';

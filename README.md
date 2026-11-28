@@ -33,7 +33,15 @@ The sign-in form posts to `login.php`, which verifies the saved password hash, a
 
 ## Upgrading an existing installation
 
-For an installation already at the weather and PDF release (f4cfc88), back up the database, then import `database/upgrade-review.sql`, `database/upgrade-map-stock-history.sql`, `database/upgrade-auth-security.sql`, and `database/upgrade-summary-date-indexes.sql` once each, in that order. These upgrades add announcement revisions, optional walk-in coordinates, the stock-movement correction link, persistent login-throttling storage, and date-query indexes. Import the upgrades before installing the updated PHP. Fresh installations already include these fields and indexes. Older distributions keep an unconfirmed barangay until verified from original records.
+Back up the existing database, select it in phpMyAdmin, and apply the scripts for your starting version before installing the updated PHP.
+
+| Starting version | Scripts in order (each once) |
+| --- | --- |
+| Weather and PDF release `f4cfc88` | `database/upgrade-review.sql`, then the three scripts below |
+| Print and history fixes `9bd5976` | `database/upgrade-map-stock-history.sql`, `database/upgrade-auth-security.sql`, `database/upgrade-summary-date-indexes.sql` |
+| Current full SQL import or an installation already upgraded to `ae1ee7c` | No upgrade scripts needed for this branch |
+
+After upgrading a copy, sign in and open the disaster summary. Its printable PDF contains aggregate figures. Individual case and receipt details remain available on the staff screen.
 
 ## Household registry
 
