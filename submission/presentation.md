@@ -48,7 +48,7 @@ Filter the staff dashboard to Paoay. Follow the flooding count into the incident
 
 ## ATOK MDRRM SYSTEM  /  MEMBER 8 · 25:20–27:00 — Print the staff disaster summary
 
-Select Paoay in Disaster summaries and use today for both dates. Choose Print PDF to open the report, then choose an earlier period and show how arrivals change while occupancy remains current. In summaries.php trace the selected totals into the PDF.
+Open Disaster Reports on the staff dashboard, select Paoay and use today for both dates. Choose Print PDF to open the report, then choose an earlier period and show how arrivals change while occupancy remains current. In dashboard/reports.php trace the selected totals into the PDF.
 
 ## ATOK MDRRM SYSTEM  /  MEMBER 9 · 27:00–29:20 — Find the same incident on the shared map
 

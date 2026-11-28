@@ -61,7 +61,7 @@ Open Relief inventory from the staff dashboard. When adding a good, enter its op
 
 ## Page organization
 
-Keep request handling, prepared SQL and the form for a task together. The household form handles both creation and editing, with its validation and SQL above the fields. Share incident ownership checks because details, images, and report copies need identical permissions. Keep multi-page workflows grouped by module; standalone modules use root-level page names such as `accounts.php`, `announcement.php`, `response_teams.php`, `relief_distribution.php` and `summaries.php`. Creation, editing and confirmation screens open only when requested. All modules use the same session checks, header and footer.
+Keep request handling, prepared SQL and the form for a task together. The household form handles both creation and editing, with its validation and SQL above the fields. Share incident ownership checks because details, images, and report copies need identical permissions. Keep multi-page workflows grouped by module; standalone modules use root-level page names such as `accounts.php`, `announcement.php`, `response_teams.php`, `relief_distribution.php`. Creation, editing and confirmation screens open only when requested. All modules use the same session checks, header and footer.
 
 ## Household relief distribution
 
@@ -75,7 +75,7 @@ From the staff dashboard choose Manage announcements. Save a draft or publish a 
 
 Open Manage relief points to edit an existing point or mark it inactive. Existing records keep their written locations and start without pins. Household details now include deletion confirmation. Incident details also serve their print copy; image access is a separate binary response. The map legend uses compact text codes and wraps for narrow screens; Show all mapped locations fits the current pins without replacing Show all Atok.
 
-The staff dashboard starts with five pending reports in oldest-first order and shows incident totals by type, including fire. Barangay selection applies to incident totals, centers and affected households. Goods needing attention always use the municipal stock balance. Disaster summaries include current affected-household classifications and individual household records, center capacity and occupancy, period arrivals, individual incident details, distribution receipts with itemized goods, unique households served by location, and goods issued. Summary dates apply to incident reporting, evacuation arrivals and distributions; household registry status and people staying now describe current records. The screen and office PDF include the same detailed incident, household and distribution records.
+The staff dashboard has Overview and Disaster Reports tabs. Overview links the current incident and household counts to the selected barangay. Inventory covers the whole municipality. Disaster Reports shows four totals, expandable breakdowns and a filtered office PDF. Household classification and occupancy are current; incident counts, arrivals and distributions use the selected dates.
 
 Account deactivation is confirmed and preserves the account and its references. Announcements are withdrawn rather than deleted. Marking an enrolled household member inactive also deactivates the linked sign-in account while retaining household, evacuation-stay and distribution history; reactivating a member does not restore account access. Incident and summary PDFs use black-and-white office styling with blank signature fields; they do not imply approval or invent signatories.
 

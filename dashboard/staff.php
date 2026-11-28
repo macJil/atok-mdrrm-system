@@ -3,10 +3,8 @@ require __DIR__ . '/../includes/session.php';
 $user = requireRole('staff');
 $pageTitle = 'Staff dashboard';
 require __DIR__ . '/../includes/header.php';
-?>
-<h1>Staff dashboard</h1>
-<?php
 $area = in_array($_GET['barangay'] ?? '', BARANGAYS, true) ? $_GET['barangay'] : '';
+require __DIR__ . '/tabs.php';
 $args = [$area, $area];
 $query = $pdo->prepare("SELECT id,incident_type,barangay,reported_at FROM incidents
     WHERE status='Pending' AND (?='' OR barangay=?) ORDER BY reported_at,id LIMIT 5");
@@ -17,18 +15,11 @@ $query = $pdo->prepare("SELECT incident_type,COUNT(*) AS total,
     FROM incidents WHERE (?='' OR barangay=?) GROUP BY incident_type ORDER BY incident_type");
 $query->execute($args);
 $typeCounts = $query->fetchAll();
-$incidentTotal = array_sum(array_column($typeCounts, 'total'));
 $query = $pdo->prepare("SELECT COALESCE(SUM(status='Pending'),0) AS pending,
         COALESCE(SUM(status='Responding'),0) AS responding
     FROM incidents WHERE (?='' OR barangay=?)");
 $query->execute($args);
 $incidentStatusTotals = $query->fetch();
-$fireTotal = 0;
-foreach ($typeCounts as $row) {
-    if ($row['incident_type'] === 'Fire') {
-        $fireTotal = (int)$row['total'];
-    }
-}
 $query = $pdo->prepare("SELECT COUNT(DISTINCT c.id) AS centers,COUNT(s.id) AS staying
     FROM evacuation_centers c LEFT JOIN evacuation_stays s ON s.center_id=c.id AND s.left_at IS NULL
     WHERE c.status='Open' AND (?='' OR c.barangay=?)");
@@ -42,9 +33,6 @@ $centers = $query->fetchAll(PDO::FETCH_ASSOC);
 $query = $pdo->prepare("SELECT COUNT(*) FROM households WHERE registry_reason IN ('Affected','Monitored and affected') AND (?='' OR barangay=?)");
 $query->execute($args);
 $affected = $query->fetchColumn();
-$query = $pdo->prepare("SELECT COUNT(DISTINCT household_id) FROM relief_distributions WHERE (?='' OR barangay_at_issue=?)");
-$query->execute($args);
-$reliefHouseholds = $query->fetchColumn();
 $attention = $pdo->query('SELECT COUNT(*) FROM relief_goods WHERE balance<=minimum_stock')->fetchColumn();
 ?>
 <form method="get" class="dashboard-filter filter-panel">
@@ -57,14 +45,10 @@ $attention = $pdo->query('SELECT COUNT(*) FROM relief_goods WHERE balance<=minim
     <button class="btn btn-primary">Apply filter</button>
 </form>
 <section class="dashboard-metrics" aria-label="Current operational summary">
+    <div><span class="metric-value"><?= (int)$incidentStatusTotals['pending'] ?></span><span class="metric-label"><a href="../incidents/index.php?status=Pending&amp;barangay=<?= urlencode($area) ?>">Awaiting review</a></span></div>
+    <div><span class="metric-value"><?= (int)$incidentStatusTotals['responding'] ?></span><span class="metric-label"><a href="../incidents/index.php?status=Responding&amp;barangay=<?= urlencode($area) ?>">Under response</a></span></div>
+    <div><span class="metric-value"><?= (int)$centerTotals['staying'] ?></span><span class="metric-label"><a href="reports.php?barangay=<?= urlencode($area) ?>">People staying in centers</a></span></div>
     <div><span class="metric-value"><?= (int)$affected ?></span><span class="metric-label"><a href="../households/index.php?affected=1&amp;barangay=<?= urlencode($area) ?>">Affected households</a></span></div>
-    <div><span class="metric-value"><?= (int)$centerTotals['staying'] ?></span><span class="metric-label">People in open centers</span></div>
-    <div><span class="metric-value"><?= (int)$incidentTotal ?></span><span class="metric-label">All incident reports</span></div>
-    <div><span class="metric-value"><?= $fireTotal ?></span><span class="metric-label">Fire reports</span></div>
-    <div><span class="metric-value"><?= (int)$incidentStatusTotals['pending'] ?></span><span class="metric-label"><a href="../incidents/index.php?status=Pending">Awaiting review</a></span></div>
-    <div><span class="metric-value"><?= (int)$incidentStatusTotals['responding'] ?></span><span class="metric-label"><a href="../incidents/index.php?status=Responding">Under response</a></span></div>
-    <div><span class="metric-value"><?= (int)$reliefHouseholds ?></span><span class="metric-label">Households issued relief</span></div>
-    <div><span class="metric-value"><?= (int)$attention ?></span><span class="metric-label"><a href="../relief_inventory/index.php?attention=1">Low or out-of-stock goods</a></span></div>
 </section>
 <section class="dashboard-card mb-3" aria-labelledby="incident-totals">
     <h2 class="h4" id="incident-totals">Incident reports by type</h2>
@@ -93,7 +77,7 @@ $attention = $pdo->query('SELECT COUNT(*) FROM relief_goods WHERE balance<=minim
                 <a class="btn btn-primary btn-sm" href="../incidents/view.php?id=<?= (int)$row['id'] ?>">Review report</a>
             </div>
         <?php endforeach; ?>
-        <?php if ($pending): ?><a href="../incidents/index.php?status=Pending">View all incident reports</a><?php endif; ?>
+        <?php if ($pending): ?><a href="../incidents/index.php?status=Pending&amp;barangay=<?= urlencode($area) ?>">View all pending reports</a><?php endif; ?>
     </section>
 
     <section class="dashboard-card dashboard-card--wide" aria-labelledby="open-centers">
@@ -118,5 +102,6 @@ $attention = $pdo->query('SELECT COUNT(*) FROM relief_goods WHERE balance<=minim
     </section>
 
 </div>
+<p><a href="../relief_inventory/index.php?attention=1">Municipal goods low or out of stock: <?= (int)$attention ?></a> · All barangays</p>
 <?php require __DIR__ . '/../includes/weather.php'; ?>
 <?php require __DIR__ . '/../includes/footer.php'; ?>

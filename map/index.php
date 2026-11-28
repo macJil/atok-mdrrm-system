@@ -4,6 +4,7 @@ $user = requireLogin();
 $user = requireRole($user['role']);
 require_once __DIR__ . '/boundary.php';
 
+$area = in_array($_GET['barangay'] ?? '', BARANGAYS, true) ? $_GET['barangay'] : '';
 $points = [];
 // Only these columns are sent to the map. A resident never receives a household row.
 $queries = [
@@ -19,7 +20,11 @@ if ($user['role'] === 'staff') {
         WHERE latitude IS NOT NULL AND longitude IS NOT NULL";
 }
 foreach ($queries as $kind => $sql) {
-    $rows = $pdo->query($sql);
+    if ($area !== '') {
+        $sql .= ' AND barangay = ?';
+    }
+    $rows = $pdo->prepare($sql);
+    $rows->execute($area === '' ? [] : [$area]);
     foreach ($rows as $row) {
         $row['kind'] = $kind;
         $points[] = $row;
@@ -31,6 +36,17 @@ require __DIR__ . '/../includes/header.php';
 <h1>Community map</h1>
 <p>Open around Sayangan, Paoay. The outline is approximate.</p>
 <?php require __DIR__ . '/../includes/map_icons.php'; ?>
+<form class="dashboard-filter filter-panel" method="get">
+    <label>Barangay
+        <select class="form-select" name="barangay">
+            <option value="">All barangays</option>
+            <?php foreach (BARANGAYS as $name): ?>
+                <option <?= $area === $name ? 'selected' : '' ?>><?= h($name) ?></option>
+            <?php endforeach; ?>
+        </select>
+    </label>
+    <button class="btn btn-primary">Apply filter</button>
+</form>
 <ul class="map-legend" aria-label="Map legend">
     <li><span class="map-legend-symbol"><?= mapIcon('flood') ?></span> Flooding</li>
     <li><span class="map-legend-symbol"><?= mapIcon('fire') ?></span> Fire</li>
@@ -48,7 +64,7 @@ require __DIR__ . '/../includes/header.php';
 <div id="community-map" aria-label="Map of saved locations"></div>
 <p id="map-status" role="status"></p>
 <h2 class="h5">Mapped locations (<?= count($points) ?>)</h2>
-<?php if (!$points): ?><p>No eligible locations have a saved pin yet.</p><?php endif; ?>
+<?php if (!$points): ?><p>No mapped locations for <?= h($area ?: 'this selection') ?>.</p><?php endif; ?>
 <ul class="dashboard-list">
     <?php foreach ($points as $row): ?>
         <li><?= h($row['label'] . ' · ' . ($row['barangay'] ?? 'Barangay awaiting confirmation') . ' · ' . $row['status']) ?></li>
@@ -56,7 +72,7 @@ require __DIR__ . '/../includes/header.php';
 </ul>
 <link rel="stylesheet" href="../assets/vendor/leaflet/leaflet.css">
 <script src="../assets/vendor/leaflet/leaflet.js"></script>
-<script src="../assets/js/map.js?v=3"></script>
+<script src="../assets/js/map.js?v=4"></script>
 <script>
 if (window.L) {
     const boundary = <?= json_encode(atokBoundary(), JSON_HEX_TAG) ?>;
@@ -64,22 +80,48 @@ if (window.L) {
     drawAtok(map, boundary, document.querySelector('#show-atok'));
     const markers = L.featureGroup().addTo(map);
     const showLocations = document.querySelector('#show-locations');
-    showLocations.addEventListener('click', () => {
-        if (markers.getLayers().length) map.fitBounds(markers.getBounds(), { padding: [20, 20], maxZoom: 16 });
-    });
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
     }).on('tileerror', () => document.querySelector('#map-status').textContent = 'Map tiles unavailable. See the locations listed below.').addTo(map);
-    for (const point of <?= json_encode($points, JSON_HEX_TAG | JSON_HEX_AMP) ?>) {
-        const text = document.createElement('span');
-        text.textContent = [point.label, point.barangay, point.status].filter(Boolean).join(' · ');
-        L.marker([point.latitude, point.longitude], {
-            title: text.textContent,
-            icon: recordPin(point.kind, point.kind === 'centers' ? point.status : point.label)
-        }).bindPopup(text).addTo(markers);
+    const points = <?= json_encode($points, JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+    const bounds = L.latLngBounds(points.map(point => [point.latitude, point.longitude]));
+    function drawMarkers() {
+        markers.clearLayers();
+        const groups = [];
+        for (const point of points) {
+            const pixel = map.project([point.latitude, point.longitude]);
+            let group = groups.find(item => item.pixel.distanceTo(pixel) < 36);
+            if (!group) {
+                group = {pixel, points: []};
+                groups.push(group);
+            }
+            group.points.push(point);
+        }
+        for (const group of groups) {
+            const first = group.points[0];
+            const list = document.createElement('ul');
+            for (const point of group.points) {
+                const row = document.createElement('li');
+                row.textContent = [point.label, point.barangay, point.status].filter(Boolean).join(' · ');
+                list.appendChild(row);
+            }
+            const count = group.points.length;
+            const type = first.kind === 'centers' ? first.status : first.label;
+            L.marker([first.latitude, first.longitude], {
+                title: count === 1 ? list.textContent : count + ' records near this point',
+                icon: recordPin(first.kind, type, count)
+            }).bindPopup(list, {maxHeight: 180}).addTo(markers);
+        }
     }
-    showLocations.disabled = markers.getLayers().length === 0;
+    map.on('zoomend', drawMarkers);
+    drawMarkers();
+    showLocations.disabled = !bounds.isValid();
+    function fitLocations() {
+        map.fitBounds(bounds, {padding: [24, 24], maxZoom: 16});
+    }
+    showLocations.addEventListener('click', fitLocations);
+    if (bounds.isValid() && <?= isset($_GET['barangay']) ? 'true' : 'false' ?>) fitLocations();
 }
 </script>
 <?php require __DIR__ . '/../includes/footer.php'; ?>

@@ -27,7 +27,7 @@ function insideAtok(lat, lng, boundary) {
     return inside;
 }
 
-function recordPin(kind, type) {
+function recordPin(kind, type, count = 1) {
     const icons = {
         Flooding: ["flood", '<path d="M3 9c2-2 4-2 6 0s4 2 6 0 4-2 6 0M3 15c2-2 4-2 6 0s4 2 6 0 4-2 6 0M5 20c2-2 4-2 6 0s4 2 6 0"/>'],
         Fire: ["fire", '<path d="M12 22c4.4 0 7-3 7-7 0-3.1-1.6-5.3-4.1-8-.2 2-1 3.2-2.1 4.1C12.4 7.3 10.9 4.5 8 2c.2 4.4-3 7.1-3 12.2C5 18.5 7.8 22 12 22Z"/><path d="M12 19c1.8 0 3-1.3 3-3.1 0-1.2-.7-2.3-1.8-3.5-.2 1.1-.7 1.6-1.4 2.1-.4-1.2-1-2-2-2.8-.2 2.3-1 3.1-1 4.4C8.8 17.8 10 19 12 19Z"/>'],
@@ -47,7 +47,8 @@ function recordPin(kind, type) {
     if (kind === "walkins") icon = icons.person;
     return L.divIcon({
         className: "record-marker record-marker--" + icon[0],
-        html: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + icon[1] + "</svg>",
+        html: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + icon[1] + "</svg>" +
+            (count > 1 ? '<b class="map-pin-count">' + count + "</b>" : ""),
         iconSize: [34, 34],
         iconAnchor: [17, 17],
     });
