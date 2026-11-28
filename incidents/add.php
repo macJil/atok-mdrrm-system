@@ -104,9 +104,11 @@ require __DIR__ . '/../includes/header.php';
         <option value="">Awaiting confirmation</option>
         <?php foreach (BARANGAYS as $value): ?><option <?= $area === $value ? 'selected' : '' ?>><?= $value ?></option><?php endforeach; ?>
     </select></label>
+    <label class="d-block mb-2">What happened?<textarea class="form-control" name="description" required maxlength="4000"><?= h($description) ?></textarea></label>
+    <label class="d-block mb-3">Photo (optional, JPEG, PNG or WebP up to 2 MiB)<input type="file" class="form-control" name="image" accept="image/jpeg,image/png,image/webp"></label>
     </section>
     <section class="form-section">
-        <h2>Location and details</h2>
+        <h2>Incident location</h2>
     <?php
     $pickerKind = 'incidents';
     $point = ['location' => $location];
@@ -116,8 +118,6 @@ require __DIR__ . '/../includes/header.php';
     }
     require __DIR__ . '/../map/picker.php';
     ?>
-    <label class="d-block mb-2">What happened?<textarea class="form-control" name="description" required maxlength="4000"><?= h($description) ?></textarea></label>
-    <label class="d-block mb-3">Photo (optional, JPEG, PNG or WebP up to 2 MiB)<input type="file" class="form-control" name="image" accept="image/jpeg,image/png,image/webp"></label>
     </section>
     <div class="incident-form-actions">
         <button class="btn btn-primary">Submit report</button>

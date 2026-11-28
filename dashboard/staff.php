@@ -27,7 +27,7 @@ $query->execute($args);
 $centerTotals = $query->fetch();
 $query = $pdo->prepare("SELECT c.id,c.name,c.barangay,c.capacity,COUNT(s.id) AS staying FROM evacuation_centers c
     LEFT JOIN evacuation_stays s ON s.center_id=c.id AND s.left_at IS NULL
-    WHERE c.status='Open' AND (?='' OR c.barangay=?) GROUP BY c.id ORDER BY c.name LIMIT 5");
+    WHERE c.status='Open' AND (?='' OR c.barangay=?) GROUP BY c.id ORDER BY (COUNT(s.id) > 0) DESC, COUNT(s.id) / c.capacity DESC, c.name, c.id LIMIT 5");
 $query->execute($args);
 $centers = $query->fetchAll(PDO::FETCH_ASSOC);
 $query = $pdo->prepare("SELECT COUNT(*) FROM households WHERE registry_reason IN ('Affected','Monitored and affected') AND (?='' OR barangay=?)");
@@ -71,6 +71,7 @@ $attention = $pdo->query('SELECT COUNT(*) FROM relief_goods WHERE balance<=minim
     <section class="dashboard-card" aria-labelledby="pending-reports">
         <h2 class="h4" id="pending-reports">Oldest pending reports</h2>
         <?php if (!$pending): ?><p class="empty-state">No reports awaiting review.</p><?php endif; ?>
+        <?php if ($pending): ?><p>Showing <?= count($pending) ?> of <?= (int)$incidentStatusTotals['pending'] ?> pending reports</p><?php endif; ?>
         <?php foreach ($pending as $row): ?>
             <div class="dashboard-row">
                 <p><?= h($row['reported_at'].' · '.$row['incident_type'].' · '.($row['barangay'] ?? 'Awaiting confirmation')) ?></p>
@@ -80,9 +81,9 @@ $attention = $pdo->query('SELECT COUNT(*) FROM relief_goods WHERE balance<=minim
         <?php if ($pending): ?><a href="../incidents/index.php?status=Pending&amp;barangay=<?= urlencode($area) ?>">View all pending reports</a><?php endif; ?>
     </section>
 
-    <section class="dashboard-card dashboard-card--wide" aria-labelledby="open-centers">
+    <section class="dashboard-card" aria-labelledby="open-centers">
         <h2 class="h4" id="open-centers">Open evacuation centers</h2>
-        <p><?= (int)$centerTotals['centers'] ?> open centers · <?= (int)$centerTotals['staying'] ?> people staying · showing up to five centers</p>
+        <p><?= (int)$centerTotals['centers'] ?> open centers · <?= (int)$centerTotals['staying'] ?> people staying · showing <?= count($centers) ?> of <?= (int)$centerTotals['centers'] ?></p>
         <?php if (!$centers): ?><p class="empty-state">No open centers in this selection.</p><?php endif; ?>
         <?php foreach ($centers as $center): ?>
             <?php $occupancy = max(0, min(100, (int)round(100 * (int)$center['staying'] / max(1, (int)$center['capacity'])))); ?>
@@ -98,7 +99,7 @@ $attention = $pdo->query('SELECT COUNT(*) FROM relief_goods WHERE balance<=minim
                 <strong><?= (int)$center['staying'] ?> / <?= (int)$center['capacity'] ?></strong>
             </div>
         <?php endforeach; ?>
-        <?php if ((int)$centerTotals['centers'] > count($centers)): ?><a href="../evacuation/index.php">View all evacuation centers</a><?php endif; ?>
+        <?php if ((int)$centerTotals['centers'] > count($centers)): ?><a href="../evacuation/index.php?status=Open&amp;barangay=<?= urlencode($area) ?>">View all open centers</a><?php endif; ?>
     </section>
 
 </div>

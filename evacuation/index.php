@@ -76,13 +76,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 $search = is_string($_GET['q'] ?? null) ? trim($_GET['q']) : '';
 $term = searchPattern($search);
-$where = " WHERE name LIKE ? ESCAPE '!' OR barangay LIKE ? ESCAPE '!' OR address LIKE ? ESCAPE '!'";
+$where = " WHERE (name LIKE ? ESCAPE '!' OR barangay LIKE ? ESCAPE '!' OR address LIKE ? ESCAPE '!' )";
+$args = [$term, $term, $term];
+$area = in_array($_GET['barangay'] ?? '', BARANGAYS, true) ? $_GET['barangay'] : '';
+$open = ($_GET['status'] ?? '') === 'Open';
+if ($open) {
+    $where .= " AND status='Open'";
+}
+if ($area !== '') {
+    $where .= ' AND barangay=?';
+    $args[] = $area;
+}
+
 $query = $pdo->prepare('SELECT COUNT(*) FROM evacuation_centers' . $where);
-$query->execute([$term,$term,$term]);
+$query->execute($args);
 $total = (int)$query->fetchColumn();
 [$page, $offset, $pages] = pageWindow($total, (int)filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT));
 $query = $pdo->prepare('SELECT c.*, (SELECT COUNT(*) FROM evacuation_stays s WHERE s.center_id=c.id AND left_at IS NULL) AS staying FROM evacuation_centers c' . $where . " ORDER BY name,id LIMIT 10 OFFSET $offset");
-$query->execute([$term,$term,$term]);
+$query->execute($args);
 $pageTitle = 'Evacuation centers';
 require __DIR__ . '/../includes/header.php';
 ?>
@@ -91,6 +102,8 @@ require __DIR__ . '/../includes/header.php';
 <?php if (!$managing): ?>
     <a class="btn btn-primary" href="?action=add">Add center</a>
     <form method="get" class="my-3 filter-panel">
+        <input type="hidden" name="barangay" value="<?= h($area) ?>"><input type="hidden" name="status" value="<?= $open ? 'Open' : '' ?>">
+        <?php if ($open || $area): ?><p><?= $open ? 'Open centers' : 'Centers' ?> · <?= h($area ?: 'All barangays') ?> <a href="index.php">Clear filters</a></p><?php endif; ?>
         <label>Search name, address or barangay<input class="form-control" name="q" value="<?= h($search) ?>"></label>
         <button class="btn btn-outline-secondary">Search</button>
     </form>
@@ -110,8 +123,8 @@ require __DIR__ . '/../includes/header.php';
     </table></div>
     <?php endif; ?>
     <p>Page <?= $page ?> of <?= $pages ?>
-        <?php if ($page > 1): ?><a href="?page=<?= $page-1 ?>&amp;q=<?= urlencode($search) ?>">Previous</a><?php endif; ?>
-        <?php if ($page < $pages): ?><a href="?page=<?= $page+1 ?>&amp;q=<?= urlencode($search) ?>">Next</a><?php endif; ?>
+        <?php if ($page > 1): ?><a href="?page=<?= $page-1 ?>&amp;status=<?= $open ? 'Open' : '' ?>&amp;barangay=<?= urlencode($area) ?>&amp;q=<?= urlencode($search) ?>">Previous</a><?php endif; ?>
+        <?php if ($page < $pages): ?><a href="?page=<?= $page+1 ?>&amp;status=<?= $open ? 'Open' : '' ?>&amp;barangay=<?= urlencode($area) ?>&amp;q=<?= urlencode($search) ?>">Next</a><?php endif; ?>
     </p>
 <?php elseif ($deleting): ?>
     <section class="form-panel col-md-8">

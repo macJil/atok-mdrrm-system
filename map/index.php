@@ -23,7 +23,7 @@ foreach ($queries as $kind => $sql) {
     if ($area !== '') {
         $sql .= ' AND barangay = ?';
     }
-    $rows = $pdo->prepare($sql);
+    $rows = $pdo->prepare($sql . ' ORDER BY id');
     $rows->execute($area === '' ? [] : [$area]);
     foreach ($rows as $row) {
         $row['kind'] = $kind;
@@ -63,13 +63,23 @@ require __DIR__ . '/../includes/header.php';
 </div>
 <div id="community-map" aria-label="Map of saved locations"></div>
 <p id="map-status" role="status"></p>
-<h2 class="h5">Mapped locations (<?= count($points) ?>)</h2>
+<?php [$page, $offset, $pages] = pageWindow(count($points), (int)filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT), 5); ?>
+<details id="mapped-list" <?= isset($_GET['page']) || !$points ? 'open' : '' ?>>
+<summary>Mapped locations (<?= count($points) ?>)</summary>
 <?php if (!$points): ?><p>No mapped locations for <?= h($area ?: 'this selection') ?>.</p><?php endif; ?>
 <ul class="dashboard-list">
-    <?php foreach ($points as $row): ?>
-        <li><?= h($row['label'] . ' · ' . ($row['barangay'] ?? 'Barangay awaiting confirmation') . ' · ' . $row['status']) ?></li>
+    <?php foreach (array_slice($points, $offset, 5, true) as $index => $row): ?>
+        <li><?= h($row['kind'] === 'households' ? 'Household · '.$row['barangay'].' · '.$row['label'] : $row['label'].' · '.($row['barangay'] ?? 'Barangay awaiting confirmation').' · '.$row['status']) ?>
+            <button type="button" hidden class="btn btn-sm btn-outline-secondary" data-point="<?= $index ?>">Show on map</button>
+        </li>
     <?php endforeach; ?>
 </ul>
+<?php if ($pages > 1): ?>
+    Page <?= $page ?> of <?= $pages ?>
+    <?php if ($page > 1): ?><a href="?barangay=<?= urlencode($area) ?>&amp;page=<?= $page-1 ?>#mapped-list">Previous</a><?php endif; ?>
+    <?php if ($page < $pages): ?><a href="?barangay=<?= urlencode($area) ?>&amp;page=<?= $page+1 ?>#mapped-list">Next</a><?php endif; ?>
+<?php endif; ?>
+</details>
 <link rel="stylesheet" href="../assets/vendor/leaflet/leaflet.css">
 <script src="../assets/vendor/leaflet/leaflet.js"></script>
 <script src="../assets/js/map.js?v=4"></script>
@@ -83,11 +93,13 @@ if (window.L) {
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
-    }).on('tileerror', () => document.querySelector('#map-status').textContent = 'Map tiles unavailable. See the locations listed below.').addTo(map);
+    }).on('tileerror', () => { document.querySelector('#mapped-list').open = true; document.querySelector('#map-status').textContent = 'Map tiles unavailable. See the locations listed below.'; }).addTo(map);
     const points = <?= json_encode($points, JSON_HEX_TAG | JSON_HEX_AMP) ?>;
     const bounds = L.latLngBounds(points.map(point => [point.latitude, point.longitude]));
+    const pointMarkers = new Map();
     function drawMarkers() {
         markers.clearLayers();
+        pointMarkers.clear();
         const groups = [];
         for (const point of points) {
             const pixel = map.project([point.latitude, point.longitude]);
@@ -108,14 +120,24 @@ if (window.L) {
             }
             const count = group.points.length;
             const type = first.kind === 'centers' ? first.status : first.label;
-            L.marker([first.latitude, first.longitude], {
+            const marker = L.marker([first.latitude, first.longitude], {
                 title: count === 1 ? list.textContent : count + ' records near this point',
                 icon: recordPin(first.kind, type, count)
             }).bindPopup(list, {maxHeight: 180}).addTo(markers);
+            for (const point of group.points) pointMarkers.set(point, marker);
         }
     }
     map.on('zoomend', drawMarkers);
     drawMarkers();
+    for (const button of document.querySelectorAll('[data-point]')) {
+        button.hidden = false;
+        button.addEventListener('click', () => {
+            const point = points[Number(button.dataset.point)];
+            map.setView([point.latitude, point.longitude], 18, {animate:false});
+            pointMarkers.get(point).openPopup();
+            map.getContainer().scrollIntoView({block:'center'});
+        });
+    }
     showLocations.disabled = !bounds.isValid();
     function fitLocations() {
         map.fitBounds(bounds, {padding: [24, 24], maxZoom: 16});

@@ -14,10 +14,10 @@ $addressField = $pickerKind === 'incidents' ? 'location' : 'address';
             <label class="d-block mb-2">Written address or nearby landmark
                 <input class="form-control" name="<?= h($addressField) ?>" maxlength="255" value="<?= h($point[$addressField] ?? '') ?>" required />
             </label>
-            <p class="small">Type the address or place a pin inside Atok. Address suggestions are optional. Coordinates are sent to Photon only when you choose to request a suggestion; you can always enter the address manually.</p>
+            <p class="small">Enter an address or landmark. You can also mark it on the map.</p>
             <button type="button" class="btn btn-outline-secondary mb-2" data-suggest-address disabled>Suggest address from selected pin</button>
+            <small class="d-block">Suggest address sends the selected point to Photon.</small>
             <p data-address-status role="status" class="small"></p>
-            <button type="button" class="btn btn-outline-secondary" data-locate>Use my current location</button>
             <button type="button" class="btn btn-outline-secondary" data-clear>Clear pin</button>
             <details>
                 <summary>Enter coordinates manually</summary>
@@ -28,15 +28,16 @@ $addressField = $pickerKind === 'incidents' ? 'location' : 'address';
                 <?php endforeach; ?>
             </details>
 
-            <p class="small">If requested, address data is provided by Photon and © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>.</p>
+            <details class="small"><summary>Map credits</summary>Photon · © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a></details>
 
         </div>
         <div class="col-md-7">
-            <div data-picker-map aria-label="Select a location in Atok" data-boundary="<?= h(json_encode($boundary)) ?>" data-lat="<?= h($boundary['properties']['opening_view'][0]) ?>" data-lng="<?= h($boundary['properties']['opening_view'][1]) ?>" data-zoom="14" data-min-zoom="8"></div>
             <div class="d-flex align-items-center flex-wrap gap-2 mt-2">
+            <button type="button" class="btn btn-outline-secondary" data-locate>Use my current location</button>
                 <button type="button" class="btn btn-sm btn-outline-secondary" data-show-atok disabled>Show all Atok</button>
                 <small>Approximate municipal boundary</small>
             </div>
+            <div data-picker-map aria-label="Select a location in Atok" data-boundary="<?= h(json_encode($boundary)) ?>" data-lat="<?= h($boundary['properties']['opening_view'][0]) ?>" data-lng="<?= h($boundary['properties']['opening_view'][1]) ?>" data-zoom="14" data-min-zoom="8"></div>
             <p data-picker-status role="status" class="small"></p>
             <p data-picker-availability role="status" class="small"></p>
             <noscript>Type an address or enter coordinates manually.</noscript>

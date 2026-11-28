@@ -97,7 +97,7 @@ main [role="alert"] { padding: .75rem 1rem; border-left: 4px solid #953b25; back
 .form-panel { padding: clamp(1rem, 3vw, 1.5rem); }
 .incident-report-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 1.25rem; width: 100%; }
 .incident-report-form .form-section { min-width: 0; }
-.incident-report-form .location-picker .row > div { min-width: 0; }
+.incident-report-form .location-picker .row > div { width: 100%; min-width: 0; }
 .incident-form-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .5rem; }
 .form-section { padding: 1rem 0; border-bottom: 1px solid #e8eef0; }
 .form-section:first-of-type { padding-top: 0; }

@@ -201,59 +201,89 @@ require __DIR__ . '/../includes/header.php';
         <div><span class="summary-metric-value"><?= $incidentTotal ?></span><span class="summary-metric-label">Incident reports</span><span class="summary-metric-note">Selected period</span></div>
         <div><span class="summary-metric-value"><?= (int)$distributionSummary['receipts'] ?></span><span class="summary-metric-label">Relief distribution receipts</span><span class="summary-metric-note"><?= (int)$distributionSummary['households'] ?> unique households · selected period</span></div>
     </section>
-    <details class="summary-section">
+<?php
+    $section = 'centers';
+    $expanded = ($_GET['section'] ?? '') === $section;
+    [$page, $offset, $pages] = pageWindow(count($centers), $expanded ? (int)filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT) : 1, 5);
+?>
+    <details class="summary-section" id="centers" <?= $expanded ? 'open' : '' ?>>
         <summary>Evacuation center occupancy and arrivals</summary>
     <p class="results-summary">Capacity and people staying are current values. Arrivals use the selected date period.</p>
     <div class="table-responsive"><table class="table summary-table">
         <thead><tr><th>Center</th><th>Barangay</th><th>Status now</th><th>Person capacity</th><th>People staying now</th><th>Arrivals during selected period</th></tr></thead>
         <tbody>
-            <?php foreach ($centers as $row): ?>
+            <?php foreach (array_slice($centers, $offset, 5) as $row): ?>
                 <tr><td><?= h($row['name']) ?></td><td><?= h($row['barangay']) ?></td><td><span class="status-badge status-<?= strtolower(h($row['status'])) ?>"><?= h($row['status']) ?></span></td><td class="summary-count"><?= (int)$row['capacity'] ?></td><td class="summary-count"><?= (int)$row['staying'] ?></td><td class="summary-count"><?= (int)$row['arrivals'] ?></td></tr>
             <?php endforeach; ?>
         </tbody>
     </table></div>
     <?php if (!$centers): ?><p class="empty-state">No centers for this selection.</p><?php endif; ?>
+        <?php require __DIR__ . '/report-pagination.php'; ?>
     </details>
-    <details class="summary-section">
+<?php
+    $section = 'incidents';
+    $expanded = ($_GET['section'] ?? '') === $section;
+    [$page, $offset, $pages] = pageWindow(count($incidents), $expanded ? (int)filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT) : 1, 5);
+?>
+    <details class="summary-section" id="incidents" <?= $expanded ? 'open' : '' ?>>
         <summary>Incidents reported during selected period</summary>
     <?php if (!$incidents): ?><p class="empty-state">No reports in this period.</p><?php endif; ?>
     <?php if ($incidents): ?><div class="table-responsive"><table class="table summary-table">
         <thead><tr><th>Incident type</th><th>Status</th><th>Reports</th></tr></thead>
-        <tbody><?php foreach ($incidents as $row): ?>
+        <tbody><?php foreach (array_slice($incidents, $offset, 5) as $row): ?>
             <tr><td><?= h($row['incident_type']) ?></td><td><span class="status-badge status-<?= strtolower(h($row['status'])) ?>"><?= h($row['status']) ?></span></td><td class="summary-count"><?= (int)$row['total'] ?></td></tr>
         <?php endforeach; ?></tbody>
     </table></div><?php endif; ?>
+        <?php require __DIR__ . '/report-pagination.php'; ?>
     </details>
-    <details class="summary-section">
+<?php
+    $section = 'householdSummary';
+    $expanded = ($_GET['section'] ?? '') === $section;
+    [$page, $offset, $pages] = pageWindow(count($householdSummary), $expanded ? (int)filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT) : 1, 5);
+?>
+    <details class="summary-section" id="householdSummary" <?= $expanded ? 'open' : '' ?>>
         <summary>Affected household classifications</summary>
     <p>Current registry counts, not restricted to the selected activity dates.</p>
     <?php if (!$householdSummary): ?><p class="empty-state">No affected household summary for this selection.</p><?php else: ?>
         <div class="table-responsive"><table class="table record-list-table summary-table">
             <thead><tr><th>Registry classification</th><th>Additional assistance</th><th>Households</th></tr></thead>
-            <tbody><?php foreach ($householdSummary as $row): ?>
+            <tbody><?php foreach (array_slice($householdSummary, $offset, 5) as $row): ?>
                 <tr><td><?= h($row['registry_reason']) ?></td><td><?= h($row['vulnerability']) ?></td><td class="summary-count"><?= (int)$row['total'] ?></td></tr>
             <?php endforeach; ?></tbody>
         </table></div>
     <?php endif; ?>
+        <?php require __DIR__ . '/report-pagination.php'; ?>
     </details>
-    <details class="summary-section">
+<?php
+    $section = 'distributionPoints';
+    $expanded = ($_GET['section'] ?? '') === $section;
+    [$page, $offset, $pages] = pageWindow(count($distributionPoints), $expanded ? (int)filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT) : 1, 5);
+?>
+    <details class="summary-section" id="distributionPoints" <?= $expanded ? 'open' : '' ?>>
         <summary>Distribution activity by location</summary>
     <p class="results-summary">During the selected period: <?= (int)$distributionSummary['receipts'] ?> receipts · <?= (int)$distributionSummary['households'] ?> unique households.</p>
     <?php if (!$distributionPoints): ?><p class="empty-state">No distribution receipts for this selection.</p><?php else: ?>
         <div class="table-responsive"><table class="table record-list-table summary-table">
             <thead><tr><th>Distribution point</th><th>Barangay at issue</th><th>Receipts</th><th>Households</th></tr></thead>
-            <tbody><?php foreach ($distributionPoints as $row): ?>
+            <tbody><?php foreach (array_slice($distributionPoints, $offset, 5) as $row): ?>
                 <tr><td><?= h($row['name']) ?></td><td><?= h($row['barangay'] ?? 'Unconfirmed') ?></td><td class="summary-count"><?= (int)$row['receipts'] ?></td><td class="summary-count"><?= (int)$row['households'] ?></td></tr>
             <?php endforeach; ?></tbody>
         </table></div>
     <?php endif; ?>
+        <?php require __DIR__ . '/report-pagination.php'; ?>
     </details>
-    <details class="summary-section">
+<?php
+    $section = 'goods';
+    $expanded = ($_GET['section'] ?? '') === $section;
+    [$page, $offset, $pages] = pageWindow(count($goods), $expanded ? (int)filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT) : 1, 5);
+?>
+    <details class="summary-section" id="goods" <?= $expanded ? 'open' : '' ?>>
         <summary>Goods distributed during selected period</summary>
     <p>Grouped by good and unit, using the barangay recorded at issue. Older distributions with an unconfirmed barangay appear only under All barangays.</p>
     <?php if ($unconfirmed): ?><p>Municipal distributions with unconfirmed barangay in this period: <?= $unconfirmed ?>.</p><?php endif; ?>
     <?php if (!$goods): ?><p class="empty-state">No goods distributed in this period.</p><?php endif; ?>
-    <?php if ($goods): ?><ul class="summary-period-list"><?php foreach ($goods as $row): ?><li><?= h($row['name']) ?> · <?= (int)$row['issued'] ?> <?= h($row['unit']) ?></li><?php endforeach; ?></ul><?php endif; ?>
+    <?php if ($goods): ?><ul class="summary-period-list"><?php foreach (array_slice($goods, $offset, 5) as $row): ?><li><?= h($row['name']) ?> · <?= (int)$row['issued'] ?> <?= h($row['unit']) ?></li><?php endforeach; ?></ul><?php endif; ?>
+        <?php require __DIR__ . '/report-pagination.php'; ?>
     </details>
 <?php endif; ?>
 <?php require __DIR__ . '/../includes/footer.php'; ?>
