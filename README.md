@@ -27,9 +27,9 @@ Use a text municipal masthead, square-cornered controls, Bootstrap tables and re
 3. Choose **one** full import in phpMyAdmin on a fresh database. Use `database/website.sql` for an empty installation or `database/presentation.sql` for the fictional classroom installation. Each file creates its own database and all tables. The older module scripts document incremental upgrades.
 4. Set `$database` in config.php to `atok_mdrrm_rebuild` or `atok_mdrrm_classroom` to match. Typical MySQL ports are 3306 on XAMPP and 8889 on MAMP. Set `$baseUrl` to the project folder with a leading slash. Use PHP 8.2+ with PDO MySQL, mbstring, fileinfo and iconv.
 5. For the empty installation run `php database/initialize_staff.php your-office-email` privately. For the classroom installation use the two fictional logins in the opening comments of presentation.sql. Keep classroom credentials and SQL files outside the published web directory for an operational site.
-6. Open the project in your browser (for standard MAMP, http://localhost:8888/atok-mdrrm-system/). The presentation, timed speaker notes, code walkthrough and acceptance record are in [submission](submission/). Both dashboards include the forecast and advisory link. Choose Print on incident details or Disaster summaries to open an A4 PDF in the viewer. Use the viewer’s printer control or save the PDF.
+6. Open the project in your browser (for standard MAMP, http://localhost:8888/atok-mdrrm-system/). The presentation, timed speaker notes, code walkthrough and acceptance record are in [submission](submission/). The staff dashboard includes the forecast and advisory link. Residents can print or download a PDF of their own incident report; staff can print incident reports and filtered disaster summaries. Use the PDF viewer’s printer control or save the PDF.
 
-The sign-in form posts to `login.php`, which verifies the saved password hash, applies sign-in throttling, renews the session ID and redirects by role. Shared session checks read the current account on each request. Password resets and status changes invalidate earlier sessions. The staff management page locks staff records during changes so at least one staff account remains active.
+The sign-in page includes MDRRMO contact information, the emergency contacts transcribed from the supplied Atok hotline poster, privacy guidance, and public announcements. Confirm hotline numbers with the relevant offices before operational use. The sign-in form posts to `login.php`, which verifies the saved password hash, applies sign-in throttling, renews the session ID and redirects by role. Shared session checks read the current account on each request. Password resets and status changes invalidate earlier sessions. The staff management page locks staff records during changes so at least one staff account remains active.
 
 ## Upgrading an existing installation
 
@@ -37,7 +37,9 @@ For an installation already at the weather and PDF release (f4cfc88), back up th
 
 ## Household registry
 
-Staff open Households to search by member name, barangay or written address. Add a household, add its members, then select an active member as representative. To replace the representative, select another member in the same household. Enrollment verifies residency and issues one resident login per member; hand over the temporary password privately. The sign-in page has no navigation bar.
+Staff open Households to search by member name, barangay or written address. Add a household, add its members, then select an active member as representative. To replace the representative, select another member in the same household. Enrollment verifies residency and issues one resident login per member; hand over the temporary password privately. Temporary passwords are short, exclude easily confused characters, are shown once, and require a password change at first sign-in. Do not print or share them publicly. The sign-in page has no navigation bar.
+
+To update a resident's login email or manage sign-in access, open the household and choose Manage member. From there, staff can explicitly restore an inactive resident account or issue a password reset after verifying the resident's identity. These are separate actions. A reset shows a temporary password once, signs out existing sessions, and requires a new password at next sign-in. Staff cannot retrieve an existing password. The **Staff accounts** page is for staff accounts only.
 
 ## Incident reporting
 

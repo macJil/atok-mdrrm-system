@@ -9,7 +9,7 @@ $base = h(rtrim($baseUrl, '/'), ENT_QUOTES, 'UTF-8');
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= h($pageTitle) ?> | Atok MDRRM System</title>
     <link rel="stylesheet" href="<?= $base ?>/assets/vendor/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= $base ?>/assets/css/site.css?v=3">
+    <link rel="stylesheet" href="<?= $base ?>/assets/css/site.css?v=8">
 </head>
 <body>
 <a class="visually-hidden-focusable" href="#main">Skip to content</a>
@@ -52,7 +52,7 @@ $base = h(rtrim($baseUrl, '/'), ENT_QUOTES, 'UTF-8');
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="<?= $base ?>/households/index.php">Households</a></li>
                         <li><a class="dropdown-item" href="<?= $base ?>/announcement.php">Announcements</a></li>
-                        <li><a class="dropdown-item" href="<?= $base ?>/accounts.php">Manage accounts</a></li>
+                        <li><a class="dropdown-item" href="<?= $base ?>/accounts.php">Staff accounts</a></li>
                     </ul>
                 </div>
             <?php endif; ?>

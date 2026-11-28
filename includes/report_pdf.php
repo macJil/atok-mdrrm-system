@@ -75,6 +75,81 @@ class OfficeReport extends FPDF
         $this->MultiCell(0, 6, $encoded, 0, 'L');
     }
 
+    public function table(array $headers, array $rows, array $widths)
+    {
+        $drawRow = function (array $values, bool $heading, int $rowNumber = 0) use (&$drawRow, $widths, $headers): void {
+            $this->SetFont('Helvetica', $heading ? 'B' : '', $heading ? 8 : 9);
+            $encoded = array_map(
+                static fn($value): string => iconv('UTF-8', 'Windows-1252//TRANSLIT', (string)$value),
+                $values
+            );
+            $wrapped = [];
+            foreach ($encoded as $index => $value) {
+                $wrapped[] = $this->wrapReportText($value, $widths[$index] - 4);
+            }
+            $height = max(array_map('count', $wrapped)) * 5 + 4;
+            if (!$heading && $this->GetY() + $height > 273) {
+                $this->AddPage();
+                $drawRow($headers, true);
+            }
+
+            $top = $this->GetY();
+            $left = 17;
+            foreach ($widths as $index => $width) {
+                if ($heading) {
+                    $this->SetFillColor(232, 238, 243);
+                } elseif ($rowNumber % 2 === 0) {
+                    $this->SetFillColor(247, 249, 250);
+                } else {
+                    $this->SetFillColor(255, 255, 255);
+                }
+                $this->Rect($left, $top, $width, $height, 'DF');
+                $this->SetXY($left + 2, $top + 2);
+                $this->MultiCell($width - 4, 5, implode("\n", $wrapped[$index]));
+                $left += $width;
+            }
+            $this->SetY($top + $height);
+        };
+
+        $drawRow($headers, true);
+        foreach ($rows as $index => $row) {
+            $drawRow($row, false, $index);
+        }
+    }
+
+    private function wrapReportText(string $text, float $width): array
+    {
+        $lines = [];
+        $line = '';
+        foreach (preg_split('/\s+/', trim($text)) ?: [] as $word) {
+            $candidate = $line === '' ? $word : $line . ' ' . $word;
+            if ($line !== '' && $this->GetStringWidth($candidate) > $width) {
+                $lines[] = $line;
+                $line = '';
+            }
+            while ($this->GetStringWidth($word) > $width) {
+                if ($line !== '') {
+                    $lines[] = $line;
+                    $line = '';
+                }
+                $piece = '';
+                foreach (str_split($word) as $character) {
+                    if ($piece !== '' && $this->GetStringWidth($piece . $character) > $width) {
+                        break;
+                    }
+                    $piece .= $character;
+                }
+                $lines[] = $piece;
+                $word = substr($word, strlen($piece));
+            }
+            $line = $line === '' ? $word : $line . ' ' . $word;
+        }
+        if ($line !== '' || !$lines) {
+            $lines[] = $line;
+        }
+        return $lines;
+    }
+
     public function signatureBlock(array $roles)
     {
         if ($this->GetY() > 235) {

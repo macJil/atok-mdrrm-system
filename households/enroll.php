@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/household_function.php';
+require_once __DIR__ . '/../includes/password.php';
 $id = householdId();
 $saving = $_SERVER['REQUEST_METHOD'] === 'POST';
 if ($saving) {
@@ -26,13 +27,13 @@ if (!$member['active'] || $member['account_id']) {
         $error = 'Enter a valid mobile number or leave it blank.';
     } else {
         try {
-            $temporary = bin2hex(random_bytes(12));
-            $query = $pdo->prepare("INSERT INTO accounts(full_name,email,password_hash,phone,role) VALUES(?,?,?,?,'resident')");
+            $temporary = temporaryPassword();
+            $query = $pdo->prepare("INSERT INTO accounts(full_name,email,password_hash,phone,role,must_change) VALUES(?,?,?,?,'resident',1)");
             $query->execute([$member['full_name'],$email,password_hash($temporary,PASSWORD_DEFAULT),$phone ?: null]);
             $query = $pdo->prepare('INSERT INTO resident_enrollments(member_id,account_id) VALUES(?,?)');
             $query->execute([$member['id'],$pdo->lastInsertId()]);
             $pdo->commit();
-            $_SESSION['notice'] = 'Resident enrolled. Give the login ' . $email . ' and this temporary password privately: ' . $temporary;
+            $_SESSION['notice'] = ['login_email'=>$email, 'temporary_password'=>$temporary];
             go('households/view.php?id=' . $id);
         } catch (PDOException $exception) {
             $error = $exception->getCode() === '23000' ? 'Email or member already enrolled.' : 'Enrollment failed. Try again.';
@@ -49,7 +50,7 @@ require __DIR__ . '/../includes/header.php';
 <p><?= h($household['barangay']) ?> · <?= h($household['address']) ?></p>
 <?php if ($error): ?><p role="alert"><?= h($error) ?></p><?php endif; ?>
 <?php if ($member['active'] && !$member['account_id']): ?>
-    <form method="post" class="col-md-6">
+    <form method="post" class="household-enroll-form form-panel workflow-form">
         <?= csrfField() ?>
         <label class="d-block mb-2">Login email<input class="form-control" type="email" name="email" required value="<?= h($email) ?>"></label>
         <label class="d-block mb-2">Resident mobile number (optional)<input class="form-control" name="phone" type="tel" maxlength="13" value="<?= h($phone) ?>"></label>

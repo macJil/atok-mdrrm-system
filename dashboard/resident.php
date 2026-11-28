@@ -47,5 +47,4 @@ $notices = $pdo->query("SELECT title,category,message,published_at FROM announce
 <?php else: ?>
     <p>No published announcements.</p>
 <?php endif; ?>
-<?php require __DIR__ . '/../includes/weather.php'; ?>
 <?php require __DIR__ . '/../includes/footer.php'; ?>

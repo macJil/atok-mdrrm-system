@@ -2,6 +2,7 @@
 require __DIR__ . '/includes/session.php';
 $user = requireRole('staff');
 $area = in_array($_GET['barangay'] ?? '', BARANGAYS, true) ? $_GET['barangay'] : '';
+$export = is_string($_GET['export'] ?? null) ? $_GET['export'] : '';
 $dates = [];
 $error = '';
 foreach (['from','through'] as $field) {
@@ -34,6 +35,19 @@ $dateRange = static function (string $column) use ($dates): array {
     }
     return [$conditions ? implode(' AND ', $conditions) : '1=1', $arguments];
 };
+$affected = 0;
+$affectedTotal = 0;
+$householdSummary = [];
+$centers = [];
+$stayingTotal = 0;
+$incidents = [];
+$incidentTotal = 0;
+$goods = [];
+$distributionPoints = [];
+$distributionSummary = ['receipts'=>0,'households'=>0];
+$unconfirmed = 0;
+$periodLabel = ($dates['from'] ?: 'Earliest record') . ' through ' . ($dates['through'] ?: 'Latest record');
+$placeLabel = $area ?: 'All barangays';
 if (!$error) {
     $query = $pdo->prepare("SELECT COUNT(*) FROM households WHERE registry_reason IN ('Affected','Monitored and affected')
         AND (?='' OR barangay=?)");
@@ -43,15 +57,7 @@ if (!$error) {
         WHERE registry_reason IN ('Affected','Monitored and affected') AND (?='' OR barangay=?)
         GROUP BY registry_reason,vulnerability ORDER BY registry_reason,vulnerability");
     $query->execute([$area,$area]);
-    $householdDetails = $query->fetchAll();
-    $query = $pdo->prepare("SELECT h.barangay,h.address,h.registry_reason,h.vulnerability,m.full_name AS representative
-        FROM households h
-        LEFT JOIN household_representatives r ON r.household_id=h.id
-        LEFT JOIN household_members m ON m.id=r.member_id
-        WHERE h.registry_reason IN ('Affected','Monitored and affected') AND (?='' OR h.barangay=?)
-        ORDER BY h.barangay,h.address,h.id");
-    $query->execute([$area,$area]);
-    $affectedHouseholds = $query->fetchAll();
+    $householdSummary = $query->fetchAll();
     [$arrivalRange, $arrivalArgs] = $dateRange('arrived_at');
     $query = $pdo->prepare("SELECT c.name,c.barangay,c.status,c.capacity,
         COALESCE(current_stays.staying,0) AS staying,COALESCE(period_arrivals.arrivals,0) AS arrivals
@@ -68,12 +74,6 @@ if (!$error) {
         WHERE $incidentRange AND (?='' OR barangay=?) GROUP BY incident_type,status ORDER BY incident_type,status");
     $query->execute([...$incidentArgs,$area,$area]);
     $incidents = $query->fetchAll();
-    [$incidentDetailRange, $incidentDetailArgs] = $dateRange('reported_at');
-    $query = $pdo->prepare("SELECT id,incident_type,status,barangay,location,description,contact_name,contact_phone,source,reported_at
-        FROM incidents WHERE $incidentDetailRange AND (?='' OR barangay=?)
-        ORDER BY reported_at DESC,id DESC");
-    $query->execute([...$incidentDetailArgs,$area,$area]);
-    $incidentDetails = $query->fetchAll();
     [$goodsRange, $goodsArgs] = $dateRange('d.distributed_at');
     $query = $pdo->prepare("SELECT g.name,g.unit,SUM(i.quantity) AS issued FROM distribution_items i
         JOIN relief_goods g ON g.id=i.good_id JOIN relief_distributions d ON d.id=i.distribution_id
@@ -94,124 +94,70 @@ if (!$error) {
         FROM relief_distributions WHERE $distributionSummaryRange AND (?='' OR barangay_at_issue=?)");
     $query->execute([...$distributionSummaryArgs,$area,$area]);
     $distributionSummary = $query->fetch();
-    [$distributionRecordRange, $distributionRecordArgs] = $dateRange('d.distributed_at');
-    $query = $pdo->prepare("SELECT d.id,d.distributed_at,d.receiver,d.barangay_at_issue,h.address,
-            p.name AS point_name,m.full_name AS representative,g.name AS good_name,g.unit,i.quantity
-        FROM relief_distributions d
-        JOIN households h ON h.id=d.household_id
-        JOIN relief_points p ON p.id=d.point_id
-        LEFT JOIN household_representatives r ON r.household_id=h.id
-        LEFT JOIN household_members m ON m.id=r.member_id
-        LEFT JOIN distribution_items i ON i.distribution_id=d.id
-        LEFT JOIN relief_goods g ON g.id=i.good_id
-        WHERE $distributionRecordRange AND (?='' OR d.barangay_at_issue=?)
-        ORDER BY d.distributed_at DESC,d.id DESC,g.name,g.unit");
-    $query->execute([...$distributionRecordArgs,$area,$area]);
-    $distributionRecords = [];
-    foreach ($query as $row) {
-        $id = (int)$row['id'];
-        if (!isset($distributionRecords[$id])) {
-            $distributionRecords[$id] = [
-                'distributed_at'=>$row['distributed_at'],
-                'receiver'=>$row['receiver'],
-                'barangay'=>$row['barangay_at_issue'],
-                'address'=>$row['address'],
-                'point_name'=>$row['point_name'],
-                'representative'=>$row['representative'],
-                'goods'=>[],
-            ];
-        }
-        if ($row['good_name'] !== null) {
-            $distributionRecords[$id]['goods'][] = $row['good_name'] . ' · ' . $row['quantity'] . ' ' . $row['unit'];
-        }
-    }
     [$unconfirmedRange, $unconfirmedArgs] = $dateRange('distributed_at');
     $query = $pdo->prepare("SELECT COUNT(*) FROM relief_distributions WHERE barangay_at_issue IS NULL AND $unconfirmedRange");
     $query->execute($unconfirmedArgs);
     $unconfirmed = (int)$query->fetchColumn();
+    $affectedTotal = (int)$affected;
+    $stayingTotal = array_sum(array_map(static fn($row): int => (int)$row['staying'], $centers));
+    $incidentTotal = array_sum(array_map(static fn($row): int => (int)$row['total'], $incidents));
 }
-$export = $_GET['export'] ?? '';
 if (!$error && $export === 'pdf') {
-    $period = ($dates['from'] ?: 'Earliest record') . ' through ' . ($dates['through'] ?: 'latest record');
-    $place = $area ?: 'All barangays';
     require_once __DIR__ . '/includes/report_pdf.php';
     $pdf = startOfficeReport('Disaster summary');
-    $pdf->fields(['Report reference'=>'ATOK-SUM', 'Barangay'=>$place, 'Selected period'=>$period]);
-    $pdf->lineText('Current registry and occupancy are measured at generation. Period counts use the selected dates.');
+    $pdf->fields(['Report reference'=>'ATOK-SUM', 'Barangay'=>$placeLabel, 'Selected period'=>$periodLabel]);
+    $pdf->lineText('Current registry and occupancy figures are measured at generation. Incident and distribution activity uses the selected period. This aggregate report does not include personal or household-identifying details.');
+    $pdf->fields([
+        'Affected households'=>$affectedTotal,
+        'Staying now'=>$stayingTotal,
+        'Incidents'=>$incidentTotal,
+        'Receipts'=>$distributionSummary['receipts'],
+    ]);
     $pdf->section('I. Affected households');
-    $pdf->lineText('Registered as affected now: ' . $affected);
-    foreach ($householdDetails as $row) {
-        $pdf->fields(['Registry classification'=>$row['registry_reason'], 'Additional assistance'=>$row['vulnerability'], 'Households'=>$row['total']]);
-    }
-    if (!$householdDetails) {
-        $pdf->lineText('No affected household records in this selection.');
-    }
-    $pdf->section('Affected household register');
-    if (!$affectedHouseholds) {
-        $pdf->lineText('No households are currently classified as affected in this selection.');
-    }
-    foreach ($affectedHouseholds as $household) {
-        $pdf->fields(['Representative'=>$household['representative'] ?? 'Not selected',
-            'Barangay'=>$household['barangay'], 'Registry status'=>$household['registry_reason']]);
-        $pdf->lineText('Address: ' . $household['address']);
-        $pdf->lineText('Assistance assessment: ' . $household['vulnerability']);
-        $pdf->Ln(2);
+    $householdRows = array_map(static fn($row): array => [
+        $row['registry_reason'], $row['vulnerability'], (int)$row['total'],
+    ], $householdSummary);
+    if ($householdRows) {
+        $pdf->table(['Registry classification', 'Assistance assessment', 'Households'], $householdRows, [66, 78, 32]);
+    } else {
+        $pdf->lineText('No affected household summary for this selection.');
     }
     $pdf->section('II. Evacuation center occupancy');
-    foreach ($centers as $center) {
-        $pdf->fields(['Center'=>$center['name'], 'Barangay'=>$center['barangay'], 'Status'=>$center['status']]);
-        $pdf->fields(['Person capacity'=>$center['capacity'], 'People staying now'=>$center['staying'], 'Arrivals in period'=>$center['arrivals']]);
-    }
-    if (!$centers) {
+    $centerRows = array_map(static fn($center): array => [
+        $center['name'], $center['barangay'], $center['status'], (int)$center['capacity'],
+        (int)$center['staying'], (int)$center['arrivals'],
+    ], $centers);
+    if ($centerRows) {
+        $pdf->table(['Center', 'Barangay', 'Status', 'Capacity', 'Staying now', 'Arrivals'], $centerRows, [50, 34, 28, 20, 22, 22]);
+    } else {
         $pdf->lineText('No centers registered for this selection.');
     }
     $pdf->section('III. Incidents reported during the period');
-    foreach ($incidents as $row) {
-        $pdf->fields(['Incident type / status'=>$row['incident_type'].' / '.$row['status'], 'Reports'=>$row['total']]);
-    }
-    if (!$incidents) {
+    $incidentRows = array_map(static fn($row): array => [
+        $row['incident_type'], $row['status'], (int)$row['total'],
+    ], $incidents);
+    if ($incidentRows) {
+        $pdf->table(['Incident type', 'Status', 'Reports'], $incidentRows, [78, 66, 32]);
+    } else {
         $pdf->lineText('Reports during the period: 0');
-    }
-    $pdf->section('Incident report details');
-    if (!$incidentDetails) {
-        $pdf->lineText('No incident report details for this period.');
-    }
-    foreach ($incidentDetails as $incident) {
-        $reference = 'ATOK-IR-' . substr($incident['reported_at'], 0, 4) . '-' . str_pad($incident['id'], 4, '0', STR_PAD_LEFT);
-        $pdf->section($reference);
-        $pdf->fields(['Reported'=>$incident['reported_at'], 'Incident type'=>$incident['incident_type'], 'Status'=>$incident['status']]);
-        $pdf->lineText('Barangay: ' . ($incident['barangay'] ?? 'Awaiting confirmation'));
-        $pdf->lineText('Location: ' . $incident['location']);
-        $pdf->lineText('Reporter: ' . $incident['contact_name'] . ' · ' . $incident['contact_phone'] . ' · ' . $incident['source']);
-        $pdf->lineText('Description: ' . $incident['description']);
-        $pdf->Ln(2);
     }
     $pdf->section('IV. Distribution activity by location');
     $pdf->fields(['Receipts'=>$distributionSummary['receipts'], 'Households issued aid'=>$distributionSummary['households']]);
-    foreach ($distributionPoints as $row) {
-        $pdf->fields(['Distribution point'=>$row['name'], 'Barangay'=>$row['barangay'] ?? 'Unconfirmed',
-            'Receipts / households'=>$row['receipts'].' / '.$row['households']]);
-    }
-    if (!$distributionPoints) {
+    $pointRows = array_map(static fn($row): array => [
+        $row['name'], $row['barangay'] ?? 'Unconfirmed', (int)$row['receipts'], (int)$row['households'],
+    ], $distributionPoints);
+    if ($pointRows) {
+        $pdf->table(['Distribution point', 'Barangay at issue', 'Receipts', 'Households'], $pointRows, [62, 54, 30, 30]);
+    } else {
         $pdf->lineText('No distribution receipts for this selection.');
     }
-    $pdf->section('Distribution receipt details');
-    if (!$distributionRecords) {
-        $pdf->lineText('No itemized distribution receipts for this selection.');
-    }
-    foreach ($distributionRecords as $index => $record) {
-        $pdf->fields(['Receipt'=>'ATOK-RD-' . str_pad((string)$index, 5, '0', STR_PAD_LEFT),
-            'Date'=>$record['distributed_at'], 'Barangay'=>$record['barangay'] ?? 'Unconfirmed']);
-        $pdf->lineText('Household: ' . ($record['representative'] ?? 'Representative not selected') . ' · ' . $record['address']);
-        $pdf->lineText('Received by: ' . $record['receiver'] . ' · Distribution point: ' . $record['point_name']);
-        $pdf->lineText('Goods issued: ' . implode('; ', $record['goods']));
-        $pdf->Ln(2);
-    }
     $pdf->section('V. Relief goods distributed during the period');
-    foreach ($goods as $row) {
-        $pdf->lineText($row['name'].': '.$row['issued'].' '.$row['unit']);
-    }
-    if (!$goods) {
+    $goodRows = array_map(static fn($row): array => [
+        $row['name'], (int)$row['issued'], $row['unit'],
+    ], $goods);
+    if ($goodRows) {
+        $pdf->table(['Relief good', 'Quantity', 'Unit'], $goodRows, [92, 42, 42]);
+    } else {
         $pdf->lineText('Recorded distributions for this selection: 0');
     }
     if ($unconfirmed) {
@@ -225,117 +171,93 @@ $pageTitle = 'Disaster summaries';
 require __DIR__ . '/includes/header.php';
 ?>
 <h1>Disaster summaries</h1>
-<form method="get" class="mb-3 filter-panel">
-    <label>From <input type="date" class="form-control" name="from" value="<?= h($dates['from']) ?>"></label>
-    <label>Through (inclusive) <input type="date" class="form-control" name="through" value="<?= h($dates['through']) ?>"></label>
-    <label>Barangay <select class="form-select" name="barangay">
-        <option value="">All barangays</option>
-        <?php foreach (BARANGAYS as $name): ?><option <?= $area === $name ? 'selected' : '' ?>><?= $name ?></option><?php endforeach; ?>
-    </select></label>
-    <button class="btn btn-primary">Apply filters</button>
+<p class="summary-intro">Review evacuation, incident, household, and relief activity. Choose a barangay and date range to focus the report.</p>
+<form method="get" class="summary-filter filter-panel">
+    <h2 class="h5">Report filters</h2>
+    <div class="summary-filter-grid">
+        <label>From <input type="date" class="form-control" name="from" value="<?= h($dates['from']) ?>"></label>
+        <label>Through (inclusive) <input type="date" class="form-control" name="through" value="<?= h($dates['through']) ?>"></label>
+        <label>Barangay <select class="form-select" name="barangay">
+            <option value="">All barangays</option>
+            <?php foreach (BARANGAYS as $name): ?><option <?= $area === $name ? 'selected' : '' ?>><?= h($name) ?></option><?php endforeach; ?>
+        </select></label>
+    </div>
+    <div class="summary-filter-actions">
+        <button class="btn btn-primary">Apply filters</button>
+        <a class="btn btn-outline-secondary" href="summaries.php">Clear filters</a>
+    </div>
 </form>
 <?php if ($error): ?>
     <p role="alert"><?= h($error) ?></p>
 <?php else: ?>
-    <p>
-        <a class="btn btn-outline-primary" target="_blank" rel="noopener" href="?<?= h(http_build_query($dates + ['barangay'=>$area,'export'=>'pdf'])) ?>">Print PDF disaster summary</a>
-    </p>
+    <section class="summary-selection" aria-label="Current report selection">
+        <div><span class="summary-selection-label">Barangay</span><strong><?= h($placeLabel) ?></strong></div>
+        <div><span class="summary-selection-label">Activity period</span><strong><?= h($periodLabel) ?></strong></div>
+    </section>
+    <section class="summary-metrics" aria-label="Summary overview">
+        <div><span class="summary-metric-value"><?= $affectedTotal ?></span><span class="summary-metric-label">Affected households</span><span class="summary-metric-note">Current registry</span></div>
+        <div><span class="summary-metric-value"><?= $stayingTotal ?></span><span class="summary-metric-label">People staying in centers</span><span class="summary-metric-note">Current occupancy</span></div>
+        <div><span class="summary-metric-value"><?= $incidentTotal ?></span><span class="summary-metric-label">Incident reports</span><span class="summary-metric-note">Selected period</span></div>
+        <div><span class="summary-metric-value"><?= (int)$distributionSummary['receipts'] ?></span><span class="summary-metric-label">Relief distribution receipts</span><span class="summary-metric-note"><?= (int)$distributionSummary['households'] ?> unique households · selected period</span></div>
+    </section>
+    <div class="summary-report-action">
+        <a class="btn btn-primary" target="_blank" rel="noopener" href="?<?= h(http_build_query($dates + ['barangay'=>$area,'export'=>'pdf'])) ?>">Print or download PDF</a>
+        <span>Aggregate report only; personal details are not included.</span>
+    </div>
+    <section class="summary-section">
     <h2 class="h4">Evacuation center occupancy and arrivals</h2>
-    <p class="results-summary">Capacity and people staying are current values; arrivals use the selected date period.</p>
-    <div class="table-responsive"><table class="table record-list-table">
+    <p class="results-summary">Capacity and people staying are current values. Arrivals use the selected date period.</p>
+    <div class="table-responsive"><table class="table summary-table">
         <thead><tr><th>Center</th><th>Barangay</th><th>Status now</th><th>Person capacity</th><th>People staying now</th><th>Arrivals during selected period</th></tr></thead>
         <tbody>
             <?php foreach ($centers as $row): ?>
-                <tr><td><?= h($row['name']) ?></td><td><?= h($row['barangay']) ?></td><td><span class="status-badge status-<?= strtolower(h($row['status'])) ?>"><?= h($row['status']) ?></span></td><td><?= (int)$row['capacity'] ?></td><td><?= (int)$row['staying'] ?></td><td><?= (int)$row['arrivals'] ?></td></tr>
+                <tr><td><?= h($row['name']) ?></td><td><?= h($row['barangay']) ?></td><td><span class="status-badge status-<?= strtolower(h($row['status'])) ?>"><?= h($row['status']) ?></span></td><td class="summary-count"><?= (int)$row['capacity'] ?></td><td class="summary-count"><?= (int)$row['staying'] ?></td><td class="summary-count"><?= (int)$row['arrivals'] ?></td></tr>
             <?php endforeach; ?>
         </tbody>
     </table></div>
-    <?php if (!$centers): ?><p>No centers for this selection.</p><?php endif; ?>
+    <?php if (!$centers): ?><p class="empty-state">No centers for this selection.</p><?php endif; ?>
+    </section>
+    <section class="summary-section">
     <h2 class="h4 mt-4">Incidents reported during selected period</h2>
-    <?php if (!$incidents): ?><p>No reports in this period.</p><?php endif; ?>
-    <?php if ($incidents): ?><div class="table-responsive"><table class="table">
+    <?php if (!$incidents): ?><p class="empty-state">No reports in this period.</p><?php endif; ?>
+    <?php if ($incidents): ?><div class="table-responsive"><table class="table summary-table">
         <thead><tr><th>Incident type</th><th>Status</th><th>Reports</th></tr></thead>
         <tbody><?php foreach ($incidents as $row): ?>
-            <tr><td><?= h($row['incident_type']) ?></td><td><span class="status-badge status-<?= strtolower(h($row['status'])) ?>"><?= h($row['status']) ?></span></td><td><?= (int)$row['total'] ?></td></tr>
+            <tr><td><?= h($row['incident_type']) ?></td><td><span class="status-badge status-<?= strtolower(h($row['status'])) ?>"><?= h($row['status']) ?></span></td><td class="summary-count"><?= (int)$row['total'] ?></td></tr>
         <?php endforeach; ?></tbody>
     </table></div><?php endif; ?>
-    <h3 class="h5 mt-3">Individual incident records</h3>
-    <?php if (!$incidentDetails): ?><p>No individual incident records for this period.</p><?php else: ?>
-        <div class="table-responsive"><table class="table record-list-table">
-            <thead><tr><th>Reference / date</th><th>Type / status</th><th>Barangay</th><th>Location and report details</th></tr></thead>
-            <tbody><?php foreach ($incidentDetails as $incident): ?>
-                <?php $reference = 'ATOK-IR-' . substr($incident['reported_at'], 0, 4) . '-' . str_pad($incident['id'], 4, '0', STR_PAD_LEFT); ?>
-                <tr>
-                    <td><strong><?= h($reference) ?></strong><br><?= h($incident['reported_at']) ?></td>
-                    <td><?= h($incident['incident_type']) ?><br><span class="status-badge status-<?= strtolower(h($incident['status'])) ?>"><?= h($incident['status']) ?></span></td>
-                    <td><?= h($incident['barangay'] ?? 'Awaiting confirmation') ?></td>
-                    <td>
-                        <strong><?= h($incident['location']) ?></strong>
-                        <details class="record-details">
-                            <summary>View reporter and description</summary>
-                            <p><strong>Reporter:</strong> <?= h($incident['contact_name']) ?> · <?= h($incident['contact_phone']) ?> · <?= h($incident['source']) ?></p>
-                            <p><?= nl2br(h($incident['description'])) ?></p>
-                        </details>
-                    </td>
-                </tr>
-            <?php endforeach; ?></tbody>
-        </table></div>
-    <?php endif; ?>
+    </section>
+    <section class="summary-section">
     <h2 class="h4 mt-4">Affected household classifications</h2>
     <p>Current registry counts, not restricted to the selected activity dates.</p>
-    <?php if (!$householdDetails): ?><p>No affected household records in this selection.</p><?php else: ?>
-        <div class="table-responsive"><table class="table record-list-table">
+    <?php if (!$householdSummary): ?><p class="empty-state">No affected household summary for this selection.</p><?php else: ?>
+        <div class="table-responsive"><table class="table record-list-table summary-table">
             <thead><tr><th>Registry classification</th><th>Additional assistance</th><th>Households</th></tr></thead>
-            <tbody><?php foreach ($householdDetails as $row): ?>
-                <tr><td><?= h($row['registry_reason']) ?></td><td><?= h($row['vulnerability']) ?></td><td><?= (int)$row['total'] ?></td></tr>
+            <tbody><?php foreach ($householdSummary as $row): ?>
+                <tr><td><?= h($row['registry_reason']) ?></td><td><?= h($row['vulnerability']) ?></td><td class="summary-count"><?= (int)$row['total'] ?></td></tr>
             <?php endforeach; ?></tbody>
         </table></div>
     <?php endif; ?>
-    <h3 class="h5 mt-3">Affected household records</h3>
-    <?php if (!$affectedHouseholds): ?><p>No households are currently classified as affected in this selection.</p><?php else: ?>
-        <div class="table-responsive"><table class="table record-list-table">
-            <thead><tr><th>Representative</th><th>Barangay</th><th>Address</th><th>Registry classification</th><th>Assistance assessment</th></tr></thead>
-            <tbody><?php foreach ($affectedHouseholds as $household): ?>
-                <tr>
-                    <td><?= h($household['representative'] ?? 'Not selected') ?></td>
-                    <td><?= h($household['barangay']) ?></td>
-                    <td><?= h($household['address']) ?></td>
-                    <td><?= h($household['registry_reason']) ?></td>
-                    <td><?= h($household['vulnerability']) ?></td>
-                </tr>
-            <?php endforeach; ?></tbody>
-        </table></div>
-    <?php endif; ?>
+    </section>
+    <section class="summary-section">
     <h2 class="h4 mt-4">Distribution activity by location</h2>
-    <p><?= (int)$distributionSummary['receipts'] ?> receipts · <?= (int)$distributionSummary['households'] ?> unique households during selected period.</p>
-    <?php if (!$distributionPoints): ?><p>No distribution receipts for this selection.</p><?php else: ?>
-        <div class="table-responsive"><table class="table record-list-table">
+    <p class="results-summary">During the selected period: <?= (int)$distributionSummary['receipts'] ?> receipts · <?= (int)$distributionSummary['households'] ?> unique households.</p>
+    <?php if (!$distributionPoints): ?><p class="empty-state">No distribution receipts for this selection.</p><?php else: ?>
+        <div class="table-responsive"><table class="table record-list-table summary-table">
             <thead><tr><th>Distribution point</th><th>Barangay at issue</th><th>Receipts</th><th>Households</th></tr></thead>
             <tbody><?php foreach ($distributionPoints as $row): ?>
-                <tr><td><?= h($row['name']) ?></td><td><?= h($row['barangay'] ?? 'Unconfirmed') ?></td><td><?= (int)$row['receipts'] ?></td><td><?= (int)$row['households'] ?></td></tr>
+                <tr><td><?= h($row['name']) ?></td><td><?= h($row['barangay'] ?? 'Unconfirmed') ?></td><td class="summary-count"><?= (int)$row['receipts'] ?></td><td class="summary-count"><?= (int)$row['households'] ?></td></tr>
             <?php endforeach; ?></tbody>
         </table></div>
     <?php endif; ?>
-    <h3 class="h5 mt-3">Itemized distribution receipts</h3>
-    <?php if (!$distributionRecords): ?><p>No itemized receipts recorded for this period.</p><?php else: ?>
-        <div class="table-responsive"><table class="table record-list-table">
-            <thead><tr><th>Date</th><th>Household</th><th>Barangay at issue</th><th>Received by / point</th><th>Goods issued</th></tr></thead>
-            <tbody><?php foreach ($distributionRecords as $record): ?>
-                <tr>
-                    <td><?= h($record['distributed_at']) ?></td>
-                    <td><?= h(($record['representative'] ?? 'Representative not selected').' · '.$record['address']) ?></td>
-                    <td><?= h($record['barangay'] ?? 'Unconfirmed') ?></td>
-                    <td><?= h($record['receiver'].' · '.$record['point_name']) ?></td>
-                    <td><ul class="mb-0"><?php foreach ($record['goods'] as $good): ?><li><?= h($good) ?></li><?php endforeach; ?></ul></td>
-                </tr>
-            <?php endforeach; ?></tbody>
-        </table></div>
-    <?php endif; ?>
+    </section>
+    <section class="summary-section">
     <h2 class="h4 mt-4">Goods distributed during selected period</h2>
     <p>Grouped by good and unit, using the barangay recorded at issue. Older distributions with an unconfirmed barangay appear only under All barangays.</p>
     <?php if ($unconfirmed): ?><p>Municipal distributions with unconfirmed barangay in this period: <?= $unconfirmed ?>.</p><?php endif; ?>
     <?php if (!$goods): ?><p class="empty-state">No goods distributed in this period.</p><?php endif; ?>
     <?php if ($goods): ?><ul class="summary-period-list"><?php foreach ($goods as $row): ?><li><?= h($row['name']) ?> · <?= (int)$row['issued'] ?> <?= h($row['unit']) ?></li><?php endforeach; ?></ul><?php endif; ?>
+    </section>
+    <a class="btn btn-outline-secondary mt-3" href="dashboard/staff.php">Return to dashboard</a>
 <?php endif; ?>
-<a class="btn btn-outline-secondary" href="dashboard/staff.php">Return to dashboard</a>
 <?php require __DIR__ . '/includes/footer.php'; ?>

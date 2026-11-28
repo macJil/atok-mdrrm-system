@@ -131,7 +131,7 @@ require __DIR__ . '/../includes/header.php';
     <p class="mb-0"><?= h($report['contact_name']) ?> · <?= h($report['contact_phone']) ?> · <?= h($report['source']) ?></p>
 </section>
 <?php if ($report['has_image']): ?><p><a class="btn btn-outline-secondary" href="image.php?id=<?= $id ?>">View attached image</a></p><?php endif; ?>
-<a class="btn btn-primary" target="_blank" rel="noopener" href="?id=<?= $id ?>&amp;copy=1">Print incident report</a>
+<a class="btn btn-primary" target="_blank" rel="noopener" href="?id=<?= $id ?>&amp;copy=1">Print or download incident PDF</a>
 <a class="btn btn-outline-secondary" href="index.php">Return to reports</a>
 <?php if ($staff): ?>
     <?php

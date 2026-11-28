@@ -4,12 +4,13 @@ if (PHP_SAPI !== 'cli') {
     exit;
 }
 require __DIR__ . '/../config.php';
+require_once __DIR__ . '/../includes/password.php';
 $email = $argv[1] ?? '';
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     exit("Supply the initial staff email.\n");
 }
-$password = bin2hex(random_bytes(12));
-$query = $pdo->prepare("INSERT INTO accounts(full_name,email,password_hash,role)
-    SELECT 'MDRRMO', ?, ?, 'staff' WHERE NOT EXISTS (SELECT 1 FROM accounts WHERE role='staff')");
+$password = temporaryPassword();
+$query = $pdo->prepare("INSERT INTO accounts(full_name,email,password_hash,role,must_change)
+    SELECT 'MDRRMO', ?, ?, 'staff', 1 WHERE NOT EXISTS (SELECT 1 FROM accounts WHERE role='staff')");
 $query->execute([$email, password_hash($password, PASSWORD_DEFAULT)]);
 echo $query->rowCount() ? "Login: $email\nTemporary password: $password\n" : "Staff account already exists.\n";

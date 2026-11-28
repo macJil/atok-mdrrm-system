@@ -2,6 +2,7 @@
 require __DIR__ . '/household_function.php';
 require_once __DIR__ . '/../map/boundary.php';
 $editing = isset($_GET['id']);
+$id = 0;
 $form = ['barangay'=>'', 'address'=>'', 'emergency_name'=>'', 'emergency_phone'=>'', 'registry_reason'=>'Monitored', 'vulnerability'=>'Not assessed', 'hazard_notes'=>''];
 if ($editing) {
     $id = householdId();
@@ -50,7 +51,7 @@ require __DIR__ . '/../includes/header.php';
 ?>
 <h1><?= h($pageTitle) ?></h1>
 <?php if ($error): ?><p role="alert"><?= h($error) ?></p><?php endif; ?>
-<form method="post" class="col-lg-8 form-panel workflow-form">
+<form method="post" class="household-form form-panel workflow-form">
     <?= csrfField() ?>
     <section class="form-section">
         <h2>Household location</h2>
@@ -103,7 +104,9 @@ require __DIR__ . '/../includes/header.php';
         <input class="form-control" name="hazard_notes" maxlength="500" value="<?= h($form['hazard_notes']) ?>">
     </label>
     </section>
-    <button class="btn btn-primary">Save household</button>
-    <a class="btn btn-outline-secondary" href="index.php">Return to registry</a>
+    <div class="household-form-actions">
+        <button class="btn btn-primary">Save household</button>
+        <a class="btn btn-outline-secondary" href="index.php">Return to registry</a>
+    </div>
 </form>
 <?php require __DIR__ . '/../includes/footer.php'; ?>

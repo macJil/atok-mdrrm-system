@@ -21,7 +21,7 @@ require __DIR__ . '/../includes/header.php';
 ?>
 <h1>Delete household</h1>
 <?php if ($error): ?><p role="alert"><?= h($error) ?></p><?php endif; ?>
-<section class="form-panel col-lg-7">
+<section class="household-delete-panel form-panel">
     <p>Delete the household for <strong><?= h($household['address']) ?>, <?= h($household['barangay']) ?></strong>?</p>
     <p>Households linked to members or relief distributions cannot be deleted.</p>
     <form method="post">

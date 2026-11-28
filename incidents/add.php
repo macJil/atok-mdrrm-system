@@ -85,7 +85,7 @@ require __DIR__ . '/../includes/header.php';
 ?>
 <h1><?= $pageTitle ?></h1>
 <?php if ($error): ?><p role="alert"><?= h($error) ?> Choose any attachment again before submitting.</p><?php endif; ?>
-<form method="post" enctype="multipart/form-data" class="col-lg-8 form-panel workflow-form">
+<form method="post" enctype="multipart/form-data" class="incident-report-form form-panel workflow-form">
     <?= csrfField() ?>
     <section class="form-section">
         <h2>Reporter and incident</h2>
@@ -119,7 +119,9 @@ require __DIR__ . '/../includes/header.php';
     <label class="d-block mb-2">What happened?<textarea class="form-control" name="description" required maxlength="4000"><?= h($description) ?></textarea></label>
     <label class="d-block mb-3">Photo (optional, JPEG, PNG or WebP up to 2 MiB)<input type="file" class="form-control" name="image" accept="image/jpeg,image/png,image/webp"></label>
     </section>
-    <button class="btn btn-primary">Submit report</button>
-    <a class="btn btn-outline-secondary" href="index.php">Return to reports</a>
+    <div class="incident-form-actions">
+        <button class="btn btn-primary">Submit report</button>
+        <a class="btn btn-outline-secondary" href="index.php">Return to reports</a>
+    </div>
 </form>
 <?php require __DIR__ . '/../includes/footer.php'; ?>

@@ -34,19 +34,23 @@ $pageTitle = 'Household registry';
 require __DIR__ . '/../includes/header.php';
 ?>
 <h1>Household registry</h1>
+<p class="household-intro">Search the household records by member, barangay, or address. Open a record to review household details and manage members.</p>
 <p><a class="btn btn-primary" href="form.php">Add household</a></p>
-<form method="get" class="mb-3 filter-panel">
+<form method="get" class="household-filter filter-panel">
     <input type="hidden" name="affected" value="<?= (int)$affected ?>">
     <input type="hidden" name="barangay" value="<?= h($area) ?>">
-    <?php if ($affected): ?><p>Affected households · <?= h($area ?: "All barangays") ?></p><?php endif; ?>
-    <label>Search by person, barangay or address<input class="form-control" name="q" value="<?= h($search) ?>"></label>
-    <button class="btn btn-outline-secondary">Search</button>
-    <a class="btn btn-outline-secondary" href="index.php">Clear</a>
+    <h2 class="h5">Find a household</h2>
+    <?php if ($affected): ?><p class="household-filter-note">Affected households · <?= h($area ?: "All barangays") ?></p><?php endif; ?>
+    <div class="household-filter-controls">
+        <label>Search by person, barangay or address<input class="form-control" name="q" value="<?= h($search) ?>"></label>
+        <button class="btn btn-primary">Search</button>
+        <a class="btn btn-outline-secondary" href="index.php">Clear search</a>
+    </div>
 </form>
-<p class="results-summary"><?= $total ?> matching households · Page <?= $page ?> of <?= $pages ?></p>
+<p class="household-results-summary" role="status"><strong><?= $total ?></strong> matching households <span>Page <?= $page ?> of <?= $pages ?></span></p>
 <?php if (!$total): ?><p class="empty-state">No households match this search. Try another name, barangay, or address.</p><?php else: ?>
 <div class="table-responsive">
-    <table class="table">
+    <table class="table household-table">
         <thead><tr><th>Representative</th><th>Barangay</th><th>Address / landmark</th><th>Active members</th><th>Record</th></tr></thead>
         <tbody>
             <?php foreach ($query as $row): ?>
@@ -60,6 +64,8 @@ require __DIR__ . '/../includes/header.php';
     </table>
 </div>
 <?php endif; ?>
-<?php if ($page > 1): ?><a class="btn btn-outline-secondary" href="?q=<?= urlencode($search) ?>&amp;affected=<?= (int)$affected ?>&amp;barangay=<?= urlencode($area) ?>&amp;page=<?= $page-1 ?>">Previous</a><?php endif; ?>
-<?php if ($page < $pages): ?><a class="btn btn-outline-secondary" href="?q=<?= urlencode($search) ?>&amp;affected=<?= (int)$affected ?>&amp;barangay=<?= urlencode($area) ?>&amp;page=<?= $page+1 ?>">Next</a><?php endif; ?>
+<nav class="household-pagination" aria-label="Household pages">
+    <?php if ($page > 1): ?><a class="btn btn-outline-secondary" href="?q=<?= urlencode($search) ?>&amp;affected=<?= (int)$affected ?>&amp;barangay=<?= urlencode($area) ?>&amp;page=<?= $page-1 ?>">Previous</a><?php endif; ?>
+    <?php if ($page < $pages): ?><a class="btn btn-outline-secondary" href="?q=<?= urlencode($search) ?>&amp;affected=<?= (int)$affected ?>&amp;barangay=<?= urlencode($area) ?>&amp;page=<?= $page+1 ?>">Next</a><?php endif; ?>
+</nav>
 <?php require __DIR__ . '/../includes/footer.php'; ?>

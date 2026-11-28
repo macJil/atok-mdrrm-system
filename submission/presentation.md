@@ -12,7 +12,7 @@ Our team presented all eight course modules. The staff approved the proposed mod
 
 ## ATOK MDRRM SYSTEM  /  MEMBER 1 · 01:10–02:00 — What staff asked to see
 
-The staff emphasized the dashboard and asked for weather information and printable reports. We show a Sayangan forecast and link to the official Northern Luzon advisories. The forecast describes one location. Open the dashboard and identify both sources.
+The staff emphasized the dashboard and asked for weather information and printable reports. On the staff dashboard, we show a Sayangan forecast and link to the official Northern Luzon advisories. The forecast describes one location. Open the staff dashboard and identify both sources.
 
 ## ATOK MDRRM SYSTEM  /  MEMBER 1 · 02:00–04:00 — Read the fictional database records
 
@@ -56,7 +56,7 @@ Open the community map as Mila. Point out the verified road obstruction and the 
 
 ## ATOK MDRRM SYSTEM  /  MEMBER 9 · 29:20–30:00 — Documentation and handoff
 
-Return to the interview requests. Demonstrate the weather panel and the advisory link. The proposed PDF layout, signatories, seals, municipal boundary and permission to use photographs still need office confirmation. The two SQL files let another team rehearse privately with the same starting records. We are ready for questions.
+Return to the interview requests. Demonstrate the weather panel on the staff dashboard and the advisory link. The proposed PDF layout, signatories, seals, municipal boundary and permission to use photographs still need office confirmation. The two SQL files let another team rehearse privately with the same starting records. We are ready for questions.
 
 ## Supporting documents
 
