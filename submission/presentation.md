@@ -36,7 +36,7 @@ Open Training Assembly Hall. One walk-in is already staying there. Select the Ra
 
 ## ATOK MDRRM SYSTEM  /  MEMBER 6 · 17:15–20:30 — Distribute several goods in one transaction
 
-Open municipal inventory and read the starting balances of eighteen. Record a stock-in of five units for each good, then distribute two food packs and two bottles to the Ramos household at Supply desk. Enter Ari as the receiver. Open the receipt and verify twenty-one of each remain. In relief_distribution/index.php show the commit after all lines.
+Open municipal inventory and read the starting balances of eighteen. Record a stock-in of five units for each good, then distribute two food packs and two bottles to the Ramos household at Supply desk. Enter Ari as the receiver. Open the receipt and verify twenty-one of each remain. In relief_distribution.php show the commit after all lines.
 
 ## ATOK MDRRM SYSTEM  /  MEMBER 7 · 20:30–23:30 — Publish and withdraw a preparedness notice
 
@@ -48,7 +48,7 @@ Filter the staff dashboard to Paoay. Follow the flooding count into the incident
 
 ## ATOK MDRRM SYSTEM  /  MEMBER 8 · 25:20–27:00 — Print the staff disaster summary
 
-Select Paoay in Disaster summaries and use today for both dates. Choose Print to open the PDF, then download the CSV. Compare the lines for bottles and packs, then choose an earlier period and show how arrivals change while occupancy remains current. In summaries/index.php trace the same query results into both downloads.
+Select Paoay in Disaster summaries and use today for both dates. Choose Print PDF to open the report, then choose an earlier period and show how arrivals change while occupancy remains current. In summaries.php trace the selected totals into the PDF.
 
 ## ATOK MDRRM SYSTEM  /  MEMBER 9 · 27:00–29:20 — Find the same incident on the shared map
 

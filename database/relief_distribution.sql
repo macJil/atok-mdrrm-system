@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS relief_distributions (
     distributed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     barangay_at_issue VARCHAR(40) NULL,
     submission_key CHAR(32) NOT NULL UNIQUE,
+    INDEX idx_relief_distributions_distributed_at (distributed_at),
     FOREIGN KEY (household_id) REFERENCES households(id),
     FOREIGN KEY (point_id) REFERENCES relief_points(id),
     FOREIGN KEY (staff_id) REFERENCES accounts(id)

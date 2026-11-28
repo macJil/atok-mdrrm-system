@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS evacuation_walkins (
     name VARCHAR(100) NOT NULL,
     address VARCHAR(255) NOT NULL,
     phone VARCHAR(13) NOT NULL,
+    latitude DECIMAL(10,7) NULL,
+    longitude DECIMAL(10,7) NULL,
     UNIQUE (name,address,phone)
 ) ENGINE=InnoDB;
 CREATE TABLE IF NOT EXISTS evacuation_stays (
@@ -29,6 +31,7 @@ CREATE TABLE IF NOT EXISTS evacuation_stays (
     UNIQUE (member_id,active_stay),
     UNIQUE (walkin_id,active_stay),
     INDEX (center_id,left_at),
+    INDEX idx_evacuation_stays_arrived_center (arrived_at,center_id),
     FOREIGN KEY (center_id) REFERENCES evacuation_centers(id),
     FOREIGN KEY (member_id) REFERENCES household_members(id),
     FOREIGN KEY (walkin_id) REFERENCES evacuation_walkins(id),

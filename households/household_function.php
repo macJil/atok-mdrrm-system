@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/session.php';
-requireRole('staff');
-const BARANGAYS = ['Abiang', 'Caliking', 'Cattubo', 'Naguey', 'Paoay', 'Pasdong', 'Poblacion', 'Topdac'];
+$user = requireRole('staff');
 const REASONS = ['Monitored', 'Affected', 'Monitored and affected'];
 const VULNERABILITY = ['Not assessed', 'No additional need identified', 'Additional assistance needed'];
 
@@ -27,9 +26,4 @@ function findHousehold(int $id, bool $lock = false): array
         exit('Household not found.');
     }
     return $household;
-}
-
-function h($text): string
-{
-    return htmlspecialchars((string)$text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }

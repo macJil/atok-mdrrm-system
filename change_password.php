@@ -1,6 +1,6 @@
 <?php
 require __DIR__ . '/includes/session.php';
-requireLogin();
+$user = requireLogin();
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = posted('password');
@@ -26,9 +26,9 @@ require __DIR__ . '/includes/header.php';
 ?>
 <h1>Set your password</h1>
 <p>Enter your current or temporary password, then choose your own.</p>
-<?php if ($error): ?><p role="alert"><?= htmlspecialchars($error) ?></p><?php endif; ?>
+<?php if ($error): ?><p role="alert"><?= h($error) ?></p><?php endif; ?>
 <form method="post" class="col-md-6">
-    <input type="hidden" name="token" value="<?= $_SESSION['token'] ?>">
+    <?= csrfField() ?>
     <label class="d-block mb-2">Current password<input class="form-control" type="password" name="current" required autocomplete="current-password"></label>
     <label class="d-block mb-2">New password<input class="form-control" type="password" name="password" required autocomplete="new-password"></label>
     <label class="d-block mb-3">Confirm new password<input class="form-control" type="password" name="confirm" required autocomplete="new-password"></label>

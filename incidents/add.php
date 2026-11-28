@@ -24,9 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($staff && !in_array($source, ['Phone','Walk-in'], true)) {
         $error = 'Choose phone or walk-in intake.';
-    } elseif (!in_array($type, $types, true) || ($area !== '' && !in_array($area, $areas, true))) {
+    } elseif (!in_array($type, $types, true) || ($area !== '' && !in_array($area, BARANGAYS, true))) {
         $error = 'Choose a listed incident type and barangay.';
-    } elseif ($name === '' || mb_strlen($name) > 100 || !preg_match('/^(?:09[0-9]{9}|[+]639[0-9]{9})$/D', $phone)) {
+    } elseif ($name === '' || mb_strlen($name) > 100 || !validMobileNumber($phone)) {
         $error = 'Enter a contact name and mobile number such as 09123456789 or +639123456789.';
     } elseif ($location === '' || mb_strlen($location) > 255 || $description === '' || mb_strlen($description) > 4000) {
         $error = 'Enter a written location (up to 255 characters) and description (up to 4,000).';
@@ -40,6 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $lat = $lat === '' ? null : $lat;
     $lng = $lng === '' ? null : $lng;
     $image = null;
+    $mime = null;
     $file = $_FILES['image'] ?? null;
     if ($error === '' && $file && $file['error'] !== UPLOAD_ERR_NO_FILE) {
         if ($file['error'] !== UPLOAD_ERR_OK) {
@@ -65,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $query = $pdo->prepare('INSERT INTO incidents(submitted_by,source,contact_name,contact_phone,incident_type,barangay,location,description,latitude,longitude) VALUES(?,?,?,?,?,?,?,?,?,?)');
             $query->execute([$user['id'],$source,$name,$phone,$type,$area ?: null,$location,$description,$lat,$lng]);
             $id = $pdo->lastInsertId();
-            if ($image !== null) {
+            if ($image !== null && $mime !== null) {
                 $query = $pdo->prepare('INSERT INTO incident_images(incident_id,mime,image_data) VALUES(?,?,?)');
                 $query->execute([$id,$mime,$image]);
             }
@@ -83,24 +84,29 @@ $pageTitle = $staff ? 'Record an incident' : 'Report an incident';
 require __DIR__ . '/../includes/header.php';
 ?>
 <h1><?= $pageTitle ?></h1>
-<?php if ($error): ?><p role="alert"><?= htmlspecialchars($error) ?> Choose any attachment again before submitting.</p><?php endif; ?>
-<form method="post" enctype="multipart/form-data" class="col-lg-7">
-    <input type="hidden" name="token" value="<?= $_SESSION['token'] ?>">
+<?php if ($error): ?><p role="alert"><?= h($error) ?> Choose any attachment again before submitting.</p><?php endif; ?>
+<form method="post" enctype="multipart/form-data" class="col-lg-8 form-panel workflow-form">
+    <?= csrfField() ?>
+    <section class="form-section">
+        <h2>Reporter and incident</h2>
     <?php if ($staff): ?>
         <label class="d-block mb-2">Received through
             <select class="form-select" name="source"><option>Walk-in</option><option <?= $source === 'Phone' ? 'selected' : '' ?>>Phone</option></select>
         </label>
     <?php endif; ?>
-    <label class="d-block mb-2">Contact name<input class="form-control" required maxlength="100" name="name" value="<?= htmlspecialchars($name) ?>"></label>
-    <label class="d-block mb-2">Mobile number<input class="form-control" required maxlength="13" type="tel" name="phone" value="<?= htmlspecialchars($phone) ?>"></label>
+    <label class="d-block mb-2">Contact name<input class="form-control" required maxlength="100" name="name" value="<?= h($name) ?>"></label>
+    <label class="d-block mb-2">Mobile number<input class="form-control" required maxlength="13" type="tel" name="phone" value="<?= h($phone) ?>"></label>
     <label class="d-block mb-2">Incident type<select name="type" class="form-select" required>
         <option value="">Choose type</option>
         <?php foreach ($types as $value): ?><option <?= $type === $value ? 'selected' : '' ?>><?= $value ?></option><?php endforeach; ?>
     </select></label>
     <label class="d-block mb-2">Barangay<select class="form-select" name="barangay">
         <option value="">Awaiting confirmation</option>
-        <?php foreach ($areas as $value): ?><option <?= $area === $value ? 'selected' : '' ?>><?= $value ?></option><?php endforeach; ?>
+        <?php foreach (BARANGAYS as $value): ?><option <?= $area === $value ? 'selected' : '' ?>><?= $value ?></option><?php endforeach; ?>
     </select></label>
+    </section>
+    <section class="form-section">
+        <h2>Location and details</h2>
     <?php
     $pickerKind = 'incidents';
     $point = ['location' => $location];
@@ -110,8 +116,9 @@ require __DIR__ . '/../includes/header.php';
     }
     require __DIR__ . '/../map/picker.php';
     ?>
-    <label class="d-block mb-2">What happened?<textarea class="form-control" name="description" required maxlength="4000"><?= htmlspecialchars($description) ?></textarea></label>
+    <label class="d-block mb-2">What happened?<textarea class="form-control" name="description" required maxlength="4000"><?= h($description) ?></textarea></label>
     <label class="d-block mb-3">Photo (optional, JPEG, PNG or WebP up to 2 MiB)<input type="file" class="form-control" name="image" accept="image/jpeg,image/png,image/webp"></label>
+    </section>
     <button class="btn btn-primary">Submit report</button>
     <a class="btn btn-outline-secondary" href="index.php">Return to reports</a>
 </form>

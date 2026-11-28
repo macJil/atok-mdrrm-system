@@ -33,8 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['copy'])) {
         }
     }
     if ($user['role'] === 'staff') {
-        $pdf->Ln(4);
-        $pdf->fields(['Prepared by'=>'___________________', 'Verified by'=>'___________________', 'Noted by'=>'___________________']);
+        $pdf->signatureBlock(['Prepared by', 'Verified by', 'Noted by']);
     }
     $pdf->Output('I', $reference . '.pdf');
     exit;
@@ -42,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['copy'])) {
 $staff = $user['role'] === 'staff';
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    requireRole('staff');
+    $user = requireRole('staff');
     $action = posted('action');
     $remarks = trim(posted('remarks'));
     $teamId = null;
@@ -118,52 +117,64 @@ $pageTitle = $reference;
 require __DIR__ . '/../includes/header.php';
 ?>
 <h1><?= $reference ?></h1>
-<p><?= htmlspecialchars($report['incident_type']) ?> · <?= htmlspecialchars($report['status']) ?> · Reported <?= htmlspecialchars($report['reported_at']) ?></p>
-<h2 class="h5">Location</h2>
-<p><?= htmlspecialchars($report['barangay'] ?? 'Awaiting confirmation') ?> · <?= htmlspecialchars($report['location']) ?></p>
-<h2 class="h5">Description</h2>
-<p><?= nl2br(htmlspecialchars($report['description'])) ?></p>
-<h2 class="h5">Reporter</h2>
-<p><?= htmlspecialchars($report['contact_name']) ?> · <?= htmlspecialchars($report['contact_phone']) ?> · <?= htmlspecialchars($report['source']) ?></p>
+<div class="record-summary">
+    <div><span class="metric-label">Type</span><br><strong><?= h($report['incident_type']) ?></strong></div>
+    <div><span class="metric-label">Status</span><br><span class="status-badge status-<?= strtolower(h($report['status'])) ?>"><?= h($report['status']) ?></span></div>
+    <div><span class="metric-label">Reported</span><br><strong><?= h($report['reported_at']) ?></strong></div>
+</div>
+<section class="content-card p-3 p-md-4 mb-3">
+    <h2 class="h5">Location</h2>
+    <p><?= h($report['barangay'] ?? 'Awaiting confirmation') ?> · <?= h($report['location']) ?></p>
+    <h2 class="h5">Description</h2>
+    <p><?= nl2br(h($report['description'])) ?></p>
+    <h2 class="h5">Reporter</h2>
+    <p class="mb-0"><?= h($report['contact_name']) ?> · <?= h($report['contact_phone']) ?> · <?= h($report['source']) ?></p>
+</section>
 <?php if ($report['has_image']): ?><p><a class="btn btn-outline-secondary" href="image.php?id=<?= $id ?>">View attached image</a></p><?php endif; ?>
 <a class="btn btn-primary" target="_blank" rel="noopener" href="?id=<?= $id ?>&amp;copy=1">Print incident report</a>
 <a class="btn btn-outline-secondary" href="index.php">Return to reports</a>
 <?php if ($staff): ?>
-    <h2 class="h4 mt-4">Incident response</h2>
-    <?php if ($error): ?><p role="alert"><?= htmlspecialchars($error) ?></p><?php endif; ?>
-    <?php if (in_array($report['status'], ['Pending','Verified','Responding'], true)): ?>
-        <form method="post" class="col-lg-7 mb-3">
-            <input type="hidden" name="token" value="<?= $_SESSION['token'] ?>">
-            <label class="d-block mb-2">Available team
-                <select class="form-select" name="team">
-                    <option value="">Choose for dispatch</option>
-                    <?php
-                    $teams = $pdo->prepare('SELECT id,name FROM response_teams WHERE active=1 AND id NOT IN
-                        (SELECT team_id FROM incident_assignments WHERE incident_id=?) ORDER BY name');
-                    $teams->execute([$id]);
-                    foreach ($teams as $team): ?>
-                        <option value="<?= (int)$team['id'] ?>"><?= htmlspecialchars($team['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
-            <label class="d-block mb-2">Action remarks<input class="form-control" name="remarks" maxlength="500" required></label>
-            <?php if ($report['status'] === 'Pending'): ?>
-                <button class="btn btn-primary" name="action" value="Verify and assign">Verify and assign</button>
-                <button class="btn btn-outline-secondary" name="action" value="Verify only">Verify only</button>
-                <button class="btn btn-outline-danger" name="action" value="Reject">Reject</button>
-            <?php else: ?>
-                <button class="btn btn-primary" name="action" value="Assign team">Assign team</button>
-            <?php endif; ?>
-        </form>
-    <?php endif; ?>
     <?php
     $query = $pdo->prepare('SELECT a.team_id,a.status,t.name FROM incident_assignments a JOIN response_teams t ON t.id=a.team_id WHERE incident_id=? ORDER BY t.name');
     $query->execute([$id]);
-    foreach ($query->fetchAll() as $assignment): ?>
-        <h3 class="h5"><?= htmlspecialchars($assignment['name']) ?> · <?= htmlspecialchars($assignment['status']) ?></h3>
+    $assignments = $query->fetchAll();
+    $hasActiveAssignment = (bool)array_filter($assignments, static fn($assignment) => $assignment['status'] === 'Assigned');
+    ?>
+    <?php if ($error): ?><p role="alert"><?= h($error) ?></p><?php endif; ?>
+    <?php if (!$hasActiveAssignment && in_array($report['status'], ['Pending','Verified','Responding'], true)): ?>
+        <section aria-labelledby="incident-response">
+            <h2 class="h4 mt-4" id="incident-response">Incident response</h2>
+            <form method="post" class="col-lg-8 mb-3 form-panel workflow-form">
+                <?= csrfField() ?>
+                <label class="d-block mb-2">Available team
+                    <select class="form-select" name="team">
+                        <option value="">Choose for dispatch</option>
+                        <?php
+                        $teams = $pdo->prepare('SELECT id,name FROM response_teams WHERE active=1 AND id NOT IN
+                            (SELECT team_id FROM incident_assignments WHERE incident_id=?) ORDER BY name');
+                        $teams->execute([$id]);
+                        foreach ($teams as $team): ?>
+                            <option value="<?= (int)$team['id'] ?>"><?= h($team['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <label class="d-block mb-2">Action remarks<input class="form-control" name="remarks" maxlength="500" required></label>
+                <?php if ($report['status'] === 'Pending'): ?>
+                    <button class="btn btn-primary" name="action" value="Verify and assign">Verify and assign</button>
+                    <button class="btn btn-outline-secondary" name="action" value="Verify only">Verify only</button>
+                    <button class="btn btn-outline-danger" name="action" value="Reject">Reject</button>
+                <?php else: ?>
+                    <button class="btn btn-primary" name="action" value="Assign team">Assign team</button>
+                <?php endif; ?>
+            </form>
+        </section>
+    <?php endif; ?>
+    <?php if ($assignments): ?><h2 class="h4 mt-4">Assigned response teams</h2><?php endif; ?>
+    <?php foreach ($assignments as $assignment): ?>
+        <h3 class="h5"><?= h($assignment['name']) ?> · <?= h($assignment['status']) ?></h3>
         <?php if ($assignment['status'] !== 'Completed'): ?>
-            <form method="post" class="col-lg-7 mb-3">
-                <input type="hidden" name="token" value="<?= $_SESSION['token'] ?>">
+            <form method="post" class="col-lg-8 mb-3 form-panel workflow-form">
+                <?= csrfField() ?>
                 <input type="hidden" name="team" value="<?= (int)$assignment['team_id'] ?>">
                 <label class="d-block mb-2">Team update<input class="form-control" name="remarks" maxlength="500" required></label>
                 <?php if ($assignment['status'] === 'Cancelled'): ?>
@@ -178,12 +189,18 @@ require __DIR__ . '/../includes/header.php';
         <?php endif; ?>
     <?php endforeach; ?>
     <h2 class="h4">Response history</h2>
-    <ul>
+    <ul class="response-history">
         <?php
         $history = $pdo->prepare('SELECT a.*,t.name,s.full_name FROM response_actions a LEFT JOIN response_teams t ON t.id=a.team_id JOIN accounts s ON s.id=a.staff_id WHERE incident_id=? ORDER BY a.id DESC');
         $history->execute([$id]);
         foreach ($history as $entry): ?>
-            <li><?= htmlspecialchars($entry['recorded_at'] . ' · ' . $entry['full_name'] . ' · ' . $entry['action_taken'] . ' ' . ($entry['name'] ?? '') . ' · ' . $entry['incident_status']) ?><br><?= htmlspecialchars($entry['remarks']) ?></li>
+            <li>
+                <strong><?= h($entry['action_taken']) ?></strong>
+                <?php if ($entry['name']): ?> · <?= h($entry['name']) ?><?php endif; ?>
+                · <span class="status-badge status-<?= strtolower(h($entry['incident_status'])) ?>"><?= h($entry['incident_status']) ?></span>
+                <p><span class="log-time"><?= h($entry['recorded_at']) ?></span> · Recorded by <?= h($entry['full_name']) ?></p>
+                <p><?= h($entry['remarks']) ?></p>
+            </li>
         <?php endforeach; ?>
     </ul>
 <?php endif; ?>

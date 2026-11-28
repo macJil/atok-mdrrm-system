@@ -16,8 +16,10 @@ CREATE TABLE IF NOT EXISTS stock_movements (
     movement_date DATE NOT NULL,
     reason VARCHAR(255) NOT NULL,
     recorded_by INT UNSIGNED NOT NULL,
+    corrects_movement_id INT UNSIGNED NULL UNIQUE,
     recorded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (good_id) REFERENCES relief_goods(id),
     FOREIGN KEY (recorded_by) REFERENCES accounts(id),
+    FOREIGN KEY (corrects_movement_id) REFERENCES stock_movements(id),
     INDEX (movement_date,id)
 ) ENGINE=InnoDB;

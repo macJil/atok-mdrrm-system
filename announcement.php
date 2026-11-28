@@ -1,7 +1,10 @@
 <?php
-require __DIR__ . '/../includes/session.php';
-requireRole('staff');
+require __DIR__ . '/includes/session.php';
+$user = requireRole('staff');
 $categories = ['Disaster advisory', 'Evacuation instructions', 'Emergency announcement', 'Preparedness reminder'];
+$adding = ($_GET['action'] ?? '') === 'add';
+$withdrawing = ($_GET['action'] ?? '') === 'withdraw' && isset($_GET['id']);
+$managing = $adding || isset($_GET['id']);
 $notice = ['title' => '', 'category' => $categories[0], 'message' => '', 'status' => 'Draft', 'show_on_login' => false];
 $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
 if (isset($_GET['id'])) {
@@ -18,7 +21,7 @@ unset($_SESSION['announcement_conflict']);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($id && (string)$notice['revision'] !== posted('revision')) {
         $_SESSION['announcement_conflict'] = 'This notice changed. Review the latest version before trying again.';
-        go('announcements/index.php?id=' . $id);
+        go('announcement.php?id=' . $id);
     }
     $action = posted('action');
     if ($action === 'withdraw' && $id) {
@@ -26,8 +29,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $query->execute([$id, posted('revision')]);
         if (!$query->rowCount()) {
             $_SESSION['announcement_conflict'] = 'This notice changed. Review the latest version before trying again.';
+            go('announcement.php?id=' . $id);
         }
-        go('announcements/index.php?id=' . $id);
+        $_SESSION['announcement_notice'] = 'Announcement withdrawn. Its history has been retained.';
+        go('announcement.php');
     }
     $notice['title'] = trim(posted('title'));
     $notice['message'] = trim(posted('message'));
@@ -58,38 +63,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($id && !$query->rowCount()) {
             $_SESSION['announcement_conflict'] = 'This notice changed. Review the latest version before trying again.';
         }
-        if (!$id) {
+        $created = !$id;
+        if ($created) {
             $id = $pdo->lastInsertId();
         }
-        go('announcements/index.php?id=' . $id);
+        $_SESSION['announcement_notice'] = $created ? 'Announcement created.' : 'Announcement updated.';
+        go('announcement.php');
     }
 }
 $pageTitle = 'Manage announcements';
-require __DIR__ . '/../includes/header.php';
+require __DIR__ . '/includes/header.php';
 ?>
 <h1>Manage announcements</h1>
+<?php if (isset($_SESSION['announcement_notice'])): ?>
+    <p role="status"><?= h($_SESSION['announcement_notice']) ?></p>
+    <?php unset($_SESSION['announcement_notice']); ?>
+<?php endif; ?>
+<?php if (!$managing): ?><p><a class="btn btn-primary" href="?action=add">New announcement</a></p><?php endif; ?>
+<?php if ($withdrawing): ?>
+    <section class="form-panel col-lg-7">
+        <h2>Confirm withdrawal</h2>
+        <p>Withdraw <strong><?= h($notice['title']) ?></strong>? It will no longer appear to residents.</p>
+        <form method="post">
+            <?= csrfField() ?>
+            <input type="hidden" name="revision" value="<?= (int)$notice['revision'] ?>">
+            <button class="btn btn-danger" name="action" value="withdraw">Withdraw announcement</button>
+            <a class="btn btn-outline-secondary" href="?id=<?= (int)$id ?>">Cancel</a>
+        </form>
+    </section>
+<?php elseif ($managing): ?>
 <h2 class="h4"><?= $id ? 'Edit announcement' : 'New announcement' ?></h2>
 <?php if ($id): ?>
-    <p>Status: <strong><?= htmlspecialchars($notice['status']) ?></strong></p>
+    <p>Status: <strong><?= h($notice['status']) ?></strong></p>
 <?php endif; ?>
 <?php if ($error): ?>
-    <p role="alert"><?= htmlspecialchars($error) ?></p>
+    <p role="alert"><?= h($error) ?></p>
 <?php endif; ?>
-<form method="post" class="col-lg-7">
+<form method="post" class="col-lg-8 form-panel workflow-form">
     <?php if ($id): ?><input type="hidden" name="revision" value="<?= (int)$notice['revision'] ?>"><?php endif; ?>
-    <input type="hidden" name="token" value="<?= $_SESSION['token'] ?>">
+    <?= csrfField() ?>
     <label class="d-block mb-2">Title
-        <input class="form-control" name="title" maxlength="150" required value="<?= htmlspecialchars($notice['title']) ?>">
+        <input class="form-control" name="title" maxlength="150" required value="<?= h($notice['title']) ?>">
     </label>
     <label class="d-block mb-2">Category
         <select class="form-select" name="category">
             <?php foreach ($categories as $category): ?>
-                <option <?= $notice['category'] === $category ? 'selected' : '' ?>><?= htmlspecialchars($category) ?></option>
+                <option <?= $notice['category'] === $category ? 'selected' : '' ?>><?= h($category) ?></option>
             <?php endforeach; ?>
         </select>
     </label>
     <label class="d-block mb-2">Message
-        <textarea class="form-control" name="message" rows="4" maxlength="3000" required><?= htmlspecialchars($notice['message']) ?></textarea>
+        <textarea class="form-control" name="message" rows="4" maxlength="3000" required><?= h($notice['message']) ?></textarea>
     </label>
     <label class="d-block mb-3">
         <input type="checkbox" name="show_on_login" value="yes" <?= $notice['show_on_login'] ? 'checked' : '' ?>>
@@ -99,34 +123,33 @@ require __DIR__ . '/../includes/header.php';
     <?php if ($notice['status'] !== 'Published'): ?>
         <button class="btn btn-outline-primary" name="action" value="publish">Publish announcement</button>
     <?php else: ?>
-        <button class="btn btn-outline-danger" name="action" value="withdraw" formnovalidate>Withdraw announcement</button>
+        <a class="btn btn-outline-danger" href="?action=withdraw&amp;id=<?= (int)$id ?>">Withdraw announcement</a>
     <?php endif; ?>
-    <?php if ($id): ?>
-        <a class="btn btn-outline-secondary" href="index.php">New announcement</a>
-    <?php endif; ?>
+    <a class="btn btn-outline-secondary" href="announcement.php">Cancel</a>
 </form>
+<?php else: ?>
 <h2 class="h4 mt-4">Saved announcements</h2>
 <?php
 $search = is_string($_GET['q'] ?? null) ? trim($_GET['q']) : '';
-$term = '%' . strtr($search, ['!'=>'!!', '%'=>'!%', '_'=>'!_']) . '%';
+$term = searchPattern($search);
 $query = $pdo->prepare("SELECT COUNT(*) FROM announcements WHERE title LIKE ? ESCAPE '!'");
 $query->execute([$term]);
 $total = (int)$query->fetchColumn();
-$pages = max(1, (int)ceil($total / 10));
-$page = min($pages, max(1, (int)filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT)));
-$offset = ($page - 1) * 10;
+[$page, $offset, $pages] = pageWindow($total, (int)filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT));
 $rows = $pdo->prepare("SELECT id,title,status,show_on_login FROM announcements WHERE title LIKE ? ESCAPE '!' ORDER BY id DESC LIMIT 10 OFFSET $offset");
 $rows->execute([$term]);
 ?>
-<form method="get"><label>Search titles <input class="form-control" name="q" value="<?= htmlspecialchars($search) ?>"></label> <button class="btn btn-outline-secondary">Search</button></form>
+<form method="get" class="filter-panel"><label>Search titles <input class="form-control" name="q" value="<?= h($search) ?>"></label> <button class="btn btn-outline-secondary">Search</button></form>
 <?php if (!$total): ?><p>No matching announcements.</p><?php endif; ?>
 <?php foreach ($rows as $row): ?>
-    <p>
-        <?= htmlspecialchars($row['title']) ?> · <?= htmlspecialchars($row['status']) ?>
-        <?= $row['status'] === 'Published' && $row['show_on_login'] ? '· Public login page' : '' ?>
+    <div class="dashboard-row content-card p-3">
+        <p class="mb-0"><?= h($row['title']) ?> · <span class="status-badge status-<?= strtolower(h($row['status'])) ?>"><?= h($row['status']) ?></span>
+            <?= $row['status'] === 'Published' && $row['show_on_login'] ? '· Public login page' : '' ?>
+        </p>
         <a class="btn btn-outline-secondary" href="?id=<?= (int)$row['id'] ?>">Edit</a>
-    </p>
+    </div>
 <?php endforeach; ?>
 <?php if ($page > 1): ?><a class="btn btn-outline-secondary" href="?q=<?= urlencode($search) ?>&amp;page=<?= $page - 1 ?>">Previous</a><?php endif; ?>
 <?php if ($page < $pages): ?><a class="btn btn-outline-secondary" href="?q=<?= urlencode($search) ?>&amp;page=<?= $page + 1 ?>">Next</a><?php endif; ?>
-<?php require __DIR__ . '/../includes/footer.php'; ?>
+<?php endif; ?>
+<?php require __DIR__ . '/includes/footer.php'; ?>

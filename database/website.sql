@@ -15,6 +15,14 @@ CREATE TABLE accounts (
     session_version INT UNSIGNED NOT NULL DEFAULT 1
 ) ENGINE=InnoDB;
 
+CREATE TABLE login_attempts (
+    attempt_key CHAR(64) PRIMARY KEY,
+    failed_attempts TINYINT UNSIGNED NOT NULL,
+    window_started_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    INDEX (updated_at)
+) ENGINE=InnoDB;
+
 CREATE TABLE households (
     latitude DECIMAL(10,7),
     longitude DECIMAL(10,7),
@@ -64,6 +72,7 @@ CREATE TABLE incidents (
     description TEXT NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'Pending',
     reported_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_incidents_reported_at (reported_at),
     FOREIGN KEY (submitted_by) REFERENCES accounts(id)
 ) ENGINE=InnoDB;
 CREATE TABLE incident_images (
@@ -117,6 +126,8 @@ CREATE TABLE evacuation_walkins (
     name VARCHAR(100) NOT NULL,
     address VARCHAR(255) NOT NULL,
     phone VARCHAR(13) NOT NULL,
+    latitude DECIMAL(10,7) NULL,
+    longitude DECIMAL(10,7) NULL,
     UNIQUE (name,address,phone)
 ) ENGINE=InnoDB;
 CREATE TABLE evacuation_stays (
@@ -133,6 +144,7 @@ CREATE TABLE evacuation_stays (
     UNIQUE (member_id,active_stay),
     UNIQUE (walkin_id,active_stay),
     INDEX (center_id,left_at),
+    INDEX idx_evacuation_stays_arrived_center (arrived_at,center_id),
     FOREIGN KEY (center_id) REFERENCES evacuation_centers(id),
     FOREIGN KEY (member_id) REFERENCES household_members(id),
     FOREIGN KEY (walkin_id) REFERENCES evacuation_walkins(id),
@@ -157,9 +169,11 @@ CREATE TABLE stock_movements (
     movement_date DATE NOT NULL,
     reason VARCHAR(255) NOT NULL,
     recorded_by INT UNSIGNED NOT NULL,
+    corrects_movement_id INT UNSIGNED NULL UNIQUE,
     recorded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (good_id) REFERENCES relief_goods(id),
     FOREIGN KEY (recorded_by) REFERENCES accounts(id),
+    FOREIGN KEY (corrects_movement_id) REFERENCES stock_movements(id),
     INDEX (movement_date,id)
 ) ENGINE=InnoDB;
 
@@ -182,6 +196,7 @@ CREATE TABLE relief_distributions (
     distributed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     barangay_at_issue VARCHAR(40) NULL,
     submission_key CHAR(32) NOT NULL UNIQUE,
+    INDEX idx_relief_distributions_distributed_at (distributed_at),
     FOREIGN KEY (household_id) REFERENCES households(id),
     FOREIGN KEY (point_id) REFERENCES relief_points(id),
     FOREIGN KEY (staff_id) REFERENCES accounts(id)

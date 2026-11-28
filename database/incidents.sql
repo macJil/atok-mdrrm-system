@@ -13,6 +13,7 @@ CREATE TABLE incidents (
     description TEXT NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'Pending',
     reported_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_incidents_reported_at (reported_at),
     FOREIGN KEY (submitted_by) REFERENCES accounts(id)
 ) ENGINE=InnoDB;
 CREATE TABLE incident_images (

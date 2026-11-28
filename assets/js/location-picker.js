@@ -9,6 +9,7 @@ document.querySelectorAll(".location-picker").forEach((root) => {
     const form = root.closest("form");
     const address = form.querySelector('[name="location"], [name="address"]');
     const addressStatus = root.querySelector("[data-address-status]");
+    const suggestButton = root.querySelector("[data-suggest-address]");
     let addressTimer = null;
     let addressRequest = null;
     let addressVersion = 0;
@@ -22,10 +23,24 @@ document.querySelectorAll(".location-picker").forEach((root) => {
         if (addressRequest) addressRequest.abort();
     }
 
-    // Only an explicit point choice calls this; displaying a saved pin does not.
+    function updateSuggestionState() {
+        const latitude = Number(lat.value);
+        const longitude = Number(lng.value);
+        suggestButton.disabled =
+            !lat.value ||
+            !lng.value ||
+            !Number.isFinite(latitude) ||
+            !Number.isFinite(longitude) ||
+            !insideAtok(latitude, longitude, boundary);
+    }
+
     function suggestAddress() {
         cancelAddress();
         if (!address || !addressStatus || !root.dataset.addressUrl) return;
+        if (suggestButton.disabled) {
+            addressStatus.textContent = "Select a valid pin inside Atok before requesting an address suggestion.";
+            return;
+        }
         if (typeof fetch === "undefined" || typeof AbortController === "undefined") {
             addressStatus.textContent = "Address lookup unavailable. Enter the address manually.";
             return;
@@ -109,6 +124,7 @@ document.querySelectorAll(".location-picker").forEach((root) => {
                 addressStatus.textContent = "Your written address is kept. Confirm it before saving.";
         });
     }
+    suggestButton.addEventListener("click", suggestAddress);
     form.addEventListener("submit", cancelAddress);
     let map = null,
         marker = null,
@@ -148,6 +164,7 @@ document.querySelectorAll(".location-picker").forEach((root) => {
         });
     }
     function show() {
+        updateSuggestionState();
         if (marker) {
             map.removeLayer(marker);
             marker = null;
@@ -198,7 +215,8 @@ document.querySelectorAll(".location-picker").forEach((root) => {
         lat.value = a.toFixed(7);
         lng.value = b.toFixed(7);
         show();
-        suggestAddress();
+        if (addressStatus)
+            addressStatus.textContent = "Pin selected. Address lookup is optional; choose Suggest address only if you want to send these coordinates to Photon.";
     }
     [lat, lng].forEach((input) =>
         input.addEventListener("input", () => {

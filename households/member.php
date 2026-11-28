@@ -26,18 +26,23 @@ if ($saving) {
     $represent = posted('represent') === 'yes';
     if ($name === '' || mb_strlen($name) > 100) {
         $error = 'Enter a member name of up to 100 characters.';
-    } elseif (!$active && $member['representative']) {
+    } elseif (!$active && ($member['representative'] || $represent)) {
         $error = 'Select another active member as representative first.';
-    } elseif (!$active && ($represent || !empty($member['account_id']))) {
-        $error = 'Representatives and enrolled members must remain active. Manage account access on the Accounts page.';
     } else {
         if ($editing) {
             $memberId = $member['id'];
             $query = $pdo->prepare('UPDATE household_members SET full_name=?,active=? WHERE id=? AND household_id=?');
             $query->execute([$name,(int)$active,$memberId,$id]);
             if ($member['account_id']) {
-                $query = $pdo->prepare('UPDATE accounts SET full_name=? WHERE id=?');
-                $query->execute([$name,$member['account_id']]);
+                $query = $pdo->prepare('SELECT id FROM accounts WHERE id=? FOR UPDATE');
+                $query->execute([$member['account_id']]);
+                if ($active) {
+                    $query = $pdo->prepare('UPDATE accounts SET full_name=? WHERE id=?');
+                    $query->execute([$name,$member['account_id']]);
+                } else {
+                    $query = $pdo->prepare('UPDATE accounts SET full_name=?,active=0,session_version=session_version+1 WHERE id=?');
+                    $query->execute([$name,$member['account_id']]);
+                }
             }
         } else {
             $query = $pdo->prepare('INSERT INTO household_members(household_id,full_name,active) VALUES(?,?,?)');
@@ -50,6 +55,11 @@ if ($saving) {
             $query->execute([$id,$memberId,$memberId]);
         }
         $pdo->commit();
+        if (!$active && !empty($member['account_id'])) {
+            $_SESSION['notice'] = 'Member marked inactive. Their linked account was deactivated; household, stay and distribution history remain.';
+        } elseif ($active && !empty($member['account_id'])) {
+            $_SESSION['notice'] = 'Member saved. Account access remains separately controlled and was not reactivated.';
+        }
         go('households/view.php?id=' . $id);
     }
     $pdo->rollBack();
@@ -61,8 +71,9 @@ require __DIR__ . '/../includes/header.php';
 <h1><?= h($pageTitle) ?></h1>
 <p><?= h($household['barangay']) ?> · <?= h($household['address']) ?></p>
 <?php if ($error): ?><p role="alert"><?= h($error) ?></p><?php endif; ?>
+<?php if ($editing && !empty($member['account_id'])): ?><p>Deactivating this member also deactivates their linked sign-in account. Their past stays and distributions remain on record. Reactivating the member does not reactivate account access.</p><?php endif; ?>
 <form method="post" class="col-md-6">
-    <input type="hidden" name="token" value="<?= $_SESSION['token'] ?>">
+    <?= csrfField() ?>
     <label class="d-block mb-2">Full name<input class="form-control" name="name" maxlength="100" required value="<?= h($member['full_name']) ?>"></label>
     <label class="d-block mb-2"><input type="checkbox" name="active" value="yes" <?= $member['active'] ? 'checked' : '' ?>> Active member</label>
     <?php if ($member['representative']): ?>

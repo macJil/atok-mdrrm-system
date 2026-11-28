@@ -22,7 +22,7 @@ if (!$member['active'] || $member['account_id']) {
 } elseif ($saving) {
     if (posted('verified') !== 'yes' || strlen($email) > 254 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Confirm residency and enter a valid login email.';
-    } elseif ($phone !== '' && !preg_match('/^(?:09[0-9]{9}|[+]639[0-9]{9})$/D', $phone)) {
+    } elseif ($phone !== '' && !validMobileNumber($phone)) {
         $error = 'Enter a valid mobile number or leave it blank.';
     } else {
         try {
@@ -50,7 +50,7 @@ require __DIR__ . '/../includes/header.php';
 <?php if ($error): ?><p role="alert"><?= h($error) ?></p><?php endif; ?>
 <?php if ($member['active'] && !$member['account_id']): ?>
     <form method="post" class="col-md-6">
-        <input type="hidden" name="token" value="<?= $_SESSION['token'] ?>">
+        <?= csrfField() ?>
         <label class="d-block mb-2">Login email<input class="form-control" type="email" name="email" required value="<?= h($email) ?>"></label>
         <label class="d-block mb-2">Resident mobile number (optional)<input class="form-control" name="phone" type="tel" maxlength="13" value="<?= h($phone) ?>"></label>
         <label class="d-block mb-2"><input type="checkbox" name="verified" value="yes" required> I verified this person's identity and Atok residency.</label>

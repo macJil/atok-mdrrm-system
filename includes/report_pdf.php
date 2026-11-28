@@ -6,14 +6,14 @@ class OfficeReport extends FPDF
 {
     public function Header()
     {
-        $this->SetTextColor(20, 60, 75);
+        $this->SetTextColor(0, 0, 0);
         $this->SetFont('Helvetica', '', 9);
         $this->Cell(0, 5, 'Republic of the Philippines  /  Province of Benguet', 0, 1, 'C');
         $this->SetFont('Helvetica', 'B', 15);
         $this->Cell(0, 8, 'Municipality of Atok', 0, 1, 'C');
         $this->SetFont('Helvetica', '', 11);
         $this->Cell(0, 7, 'Municipal Disaster Risk Reduction and Management Office', 0, 1, 'C');
-        $this->SetDrawColor(107, 127, 136);
+        $this->SetDrawColor(0, 0, 0);
         $this->Line(17, $this->GetY()+1, 193, $this->GetY()+1);
         $this->Ln(4);
     }
@@ -21,8 +21,9 @@ class OfficeReport extends FPDF
     public function Footer()
     {
         $this->SetY(-16);
+        $this->SetTextColor(0, 0, 0);
         $this->SetFont('Helvetica', '', 9);
-        $this->Cell(0, 7, 'Proposed office format  |  Page ' . $this->PageNo() . ' of {nb}', 'T', 0, 'R');
+        $this->Cell(0, 7, 'Page ' . $this->PageNo() . ' of {nb}', 'T', 0, 'R');
     }
 
     public function section($heading)
@@ -30,7 +31,9 @@ class OfficeReport extends FPDF
         if ($this->GetY() > 248) {
             $this->AddPage();
         }
-        $this->SetFillColor(219, 229, 240);
+        $this->SetTextColor(0, 0, 0);
+        $this->SetDrawColor(0, 0, 0);
+        $this->SetFillColor(238, 238, 238);
         $this->SetFont('Helvetica', 'B', 11);
         $this->MultiCell(0, 8, $heading, 1, 'L', true);
     }
@@ -43,6 +46,8 @@ class OfficeReport extends FPDF
         }
         $top = $this->GetY();
         $bottom = $top;
+        $this->SetTextColor(0, 0, 0);
+        $this->SetDrawColor(0, 0, 0);
         $width = 176 / count($fields);
         $left = 17;
         foreach ($fields as $label => $value) {
@@ -64,9 +69,33 @@ class OfficeReport extends FPDF
 
     public function lineText($text)
     {
+        $this->SetTextColor(0, 0, 0);
         $this->SetFont('Helvetica', '', 10);
         $encoded = iconv('UTF-8', 'Windows-1252//TRANSLIT', $text);
         $this->MultiCell(0, 6, $encoded, 0, 'L');
+    }
+
+    public function signatureBlock(array $roles)
+    {
+        if ($this->GetY() > 235) {
+            $this->AddPage();
+        }
+        $this->Ln(6);
+        $top = $this->GetY();
+        $width = 176 / count($roles);
+        $this->SetDrawColor(0, 0, 0);
+        $this->SetTextColor(0, 0, 0);
+        foreach ($roles as $index => $role) {
+            $left = 17 + $index * $width;
+            $this->Line($left + 2, $top + 10, $left + $width - 2, $top + 10);
+            $this->SetXY($left + 2, $top + 12);
+            $this->SetFont('Helvetica', 'B', 9);
+            $this->Cell($width - 4, 5, $role, 0, 1, 'C');
+            $this->SetXY($left + 2, $top + 18);
+            $this->SetFont('Helvetica', '', 8);
+            $this->Cell($width - 4, 4, 'Signature / date', 0, 0, 'C');
+        }
+        $this->SetY($top + 25);
     }
 }
 

@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Choose a valid barangay, registry reason and assessment.';
     } elseif ($form['address'] === '' || mb_strlen($form['address']) > 255 || $form['emergency_name'] === '' || mb_strlen($form['emergency_name']) > 100 || mb_strlen($form['hazard_notes']) > 500) {
         $error = 'Enter an address and emergency contact name within the field limits.';
-    } elseif (!preg_match('/^(?:09[0-9]{9}|[+]639[0-9]{9})$/D', $form['emergency_phone'])) {
+    } elseif (!validMobileNumber($form['emergency_phone'])) {
         $error = 'Enter a mobile number starting with 09 or +639 followed by nine digits.';
     }
     $lat = trim(posted('latitude'));
@@ -50,8 +50,10 @@ require __DIR__ . '/../includes/header.php';
 ?>
 <h1><?= h($pageTitle) ?></h1>
 <?php if ($error): ?><p role="alert"><?= h($error) ?></p><?php endif; ?>
-<form method="post" class="col-lg-7">
-    <input type="hidden" name="token" value="<?= $_SESSION['token'] ?>">
+<form method="post" class="col-lg-8 form-panel workflow-form">
+    <?= csrfField() ?>
+    <section class="form-section">
+        <h2>Household location</h2>
     <label class="d-block mb-3">Barangay
         <select class="form-select" name="barangay" required>
             <option value="">Choose</option>
@@ -69,12 +71,18 @@ require __DIR__ . '/../includes/header.php';
     }
     require __DIR__ . '/../map/picker.php';
     ?>
+    </section>
+    <section class="form-section">
+        <h2>Emergency contact</h2>
     <label class="d-block mb-3">Emergency contact name
         <input class="form-control" name="emergency_name" maxlength="100" required value="<?= h($form['emergency_name']) ?>">
     </label>
     <label class="d-block mb-3">Emergency contact number
         <input class="form-control" name="emergency_phone" maxlength="13" required value="<?= h($form['emergency_phone']) ?>">
     </label>
+    </section>
+    <section class="form-section">
+        <h2>Registry and assistance</h2>
     <label class="d-block mb-3">Registry reason
         <select class="form-select" name="registry_reason" required>
             <option value="">Choose</option>
@@ -94,6 +102,7 @@ require __DIR__ . '/../includes/header.php';
     <label class="d-block mb-3">Recorded hazard notes (optional)
         <input class="form-control" name="hazard_notes" maxlength="500" value="<?= h($form['hazard_notes']) ?>">
     </label>
+    </section>
     <button class="btn btn-primary">Save household</button>
     <a class="btn btn-outline-secondary" href="index.php">Return to registry</a>
 </form>
