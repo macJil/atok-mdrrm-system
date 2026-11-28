@@ -38,7 +38,7 @@ $pageTitle = 'Community map';
 require __DIR__ . '/../includes/header.php';
 ?>
 <h1>Community map</h1>
-<p>Open around Sayangan, Paoay. The outline is approximate.</p>
+<p>The outline around Atok is approximate. Tap a numbered marker to zoom in or see the records at that spot.</p>
 <div class="d-flex flex-wrap gap-2 mb-2">
     <button class="btn btn-outline-secondary" id="show-atok" disabled>Show all Atok</button>
     <button class="btn btn-outline-secondary" id="show-locations" disabled>Show all mapped locations</button>
@@ -64,7 +64,7 @@ require __DIR__ . '/../includes/header.php';
 </ul>
 <link rel="stylesheet" href="../assets/vendor/leaflet/leaflet.css">
 <script src="../assets/vendor/leaflet/leaflet.js"></script>
-<script src="../assets/js/map.js?v=4"></script>
+<script src="../assets/js/map.js?v=5"></script>
 <script>
 if (window.L) {
     const boundary = <?= json_encode(atokBoundary(), JSON_HEX_TAG) ?>;
@@ -72,8 +72,9 @@ if (window.L) {
     drawAtok(map, boundary, document.querySelector('#show-atok'));
     const markers = L.featureGroup().addTo(map);
     const showLocations = document.querySelector('#show-locations');
+    let visibleBounds;
     showLocations.addEventListener('click', () => {
-        if (markers.getLayers().length) map.fitBounds(markers.getBounds(), { padding: [20, 20], maxZoom: 16 });
+        if (markers.getLayers().length) map.fitBounds(visibleBounds, { padding: [20, 20], maxZoom: 16 });
     });
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
@@ -87,16 +88,23 @@ if (window.L) {
             if (toggle.checked) enabled.add(toggle.dataset.kind === 'incidents' ? toggle.dataset.type : toggle.dataset.kind);
         }
         markers.clearLayers();
-        const groups = new Map();
+        const groups = [];
+        visibleBounds = L.latLngBounds([]);
         let visible = 0;
         for (const point of points) {
             if (!enabled.has(point.kind === 'incidents' ? point.label : point.kind)) continue;
-            const key = point.latitude + ',' + point.longitude;
-            if (!groups.has(key)) groups.set(key, []);
-            groups.get(key).push(point);
+            const position = L.latLng(Number(point.latitude), Number(point.longitude));
+            visibleBounds.extend(position);
+            const pixel = map.project(position);
+            let group = groups.find(entry => entry.pixel.distanceTo(pixel) < 49);
+            if (!group) {
+                group = {pixel, records: []};
+                groups.push(group);
+            }
+            group.records.push(point);
             visible++;
         }
-        for (const records of groups.values()) {
+        for (const {records} of groups) {
             const first = records[0];
             const list = document.createElement('ul');
             for (const point of records) {
@@ -104,11 +112,19 @@ if (window.L) {
                 item.textContent = [point.label, point.barangay, point.status].filter(Boolean).join(' · ');
                 list.appendChild(item);
             }
-            const title = records.length === 1 ? list.textContent : records.length + ' records at this point';
-            L.marker([first.latitude, first.longitude], {
+            const bounds = L.latLngBounds(records.map(point => [point.latitude, point.longitude]));
+            const samePlace = bounds.getNorthEast().equals(bounds.getSouthWest());
+            const canZoom = !samePlace && map.getZoom() < map.getMaxZoom();
+            const title = canZoom ? records.length + ' nearby records. Zoom in' : records.length === 1 ? list.textContent : records.length + ' mapped records';
+            const marker = L.marker([first.latitude, first.longitude], {
                 title,
                 icon: recordPin(first.kind, first.kind === 'centers' ? first.status : first.label, records.length)
-            }).bindPopup(list, {maxHeight: 180}).addTo(markers);
+            }).addTo(markers);
+            if (canZoom) {
+                marker.on('click', () => map.fitBounds(bounds, {padding:[50,50], maxZoom:19}));
+            } else {
+                marker.bindPopup(list, {maxHeight:180});
+            }
         }
         for (const item of document.querySelectorAll('[data-layer]')) item.hidden = !enabled.has(item.dataset.layer);
         document.getElementById('visible-count').textContent = visible;
@@ -122,6 +138,7 @@ if (window.L) {
         toggle.disabled = false;
         toggle.addEventListener('change', displayLocations);
     }
+    map.on('zoomend', displayLocations);
     displayLocations();
 }
 </script>

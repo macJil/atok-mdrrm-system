@@ -49,7 +49,7 @@ function recordPin(kind, type, count = 1) {
         className: "record-marker record-marker--" + icon[0],
         html: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + icon[1] + "</svg>" +
             (count > 1 ? '<b class="pin-count">' + count + "</b>" : ""),
-        iconSize: [38, 38],
-        iconAnchor: [19, 19],
+        iconSize: [44, 44],
+        iconAnchor: [22, 22],
     });
 }

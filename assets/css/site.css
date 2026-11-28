@@ -152,3 +152,17 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .map-legend label { display: flex; align-items: center; gap: .5rem; }
 .legend-pin { flex: 0 0 32px; height: 32px; }
 .dashboard-metrics > a { display: grid; align-content: center; padding: .85rem; }
+
+.summary-board, .work-overview { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; margin-bottom:1rem; align-items:start; }
+.stat-panel { padding:1.15rem; border:1px solid var(--atok-border); border-top:4px solid #17655f; background:white; min-width:0; }
+.stat-panel h2 { font-size:1.15rem; }
+.stat-number, .dashboard-metrics .metric-value { font-size:2.35rem; line-height:1.2; color:#173f54; font-variant-numeric:tabular-nums; }
+.stat-panel p { color:#40535d; margin:.35rem 0; }
+.stat-panel details { margin-top:.85rem; border-top:1px solid #ccd6da; padding-top:.65rem; }
+.stat-panel summary { color:#175b59; font-weight:600; }
+.today-counts a { display:flex; justify-content:space-between; align-items:center; padding:.45rem .55rem; border-top:1px solid #ccd6da; }
+.dashboard-metrics > a { border-top:4px solid #17655f; text-decoration:none; }
+.dashboard-metrics > a:hover .metric-label { text-decoration:underline; }
+.leaflet-container .record-marker { display:grid; place-items:center; box-shadow:0 0 0 2px #172c39,0 3px 7px #0007; border:3px solid white; }
+.record-marker svg { stroke-width:2.7; width:80%; height:80%; }
+@media (max-width:767px) { .summary-board,.work-overview {grid-template-columns:minmax(0,1fr);} }

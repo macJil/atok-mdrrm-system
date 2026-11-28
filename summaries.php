@@ -144,8 +144,17 @@ require __DIR__ . '/includes/header.php';
 <?php if ($error): ?>
     <p role="alert"><?= h($error) ?></p>
 <?php else: ?>
-    <h2 class="h4">Households currently marked affected: <?= (int)$affected ?></h2>
-    <h2 class="h4" id="occupancy">Evacuation center occupancy and arrivals</h2>
+    <div class="summary-board">
+    <section class="stat-panel">
+        <h2>Affected households</h2>
+        <strong class="stat-number"><?= (int)$affected ?></strong>
+        <p>Currently marked affected</p>
+    </section>
+    <section class="stat-panel" id="occupancy">
+        <h2>Evacuation centers</h2>
+        <strong class="stat-number"><?= array_sum(array_column($centers,'staying')) ?></strong>
+        <p>People staying now · <?= array_sum(array_column($centers,'arrivals')) ?> arrivals in selected period</p>
+        <details><summary>Occupancy by center</summary>
     <p class="results-summary">Capacity and people staying are current values; arrivals use the selected date period.</p>
     <div class="table-responsive"><table class="table record-list-table">
         <thead><tr><th>Center</th><th>Barangay</th><th>Status now</th><th>Person capacity</th><th>People staying now</th><th>Arrivals during selected period</th></tr></thead>
@@ -156,7 +165,13 @@ require __DIR__ . '/includes/header.php';
         </tbody>
     </table></div>
     <?php if (!$centers): ?><p>No centers for this selection.</p><?php endif; ?>
-    <h2 class="h4 mt-4">Incidents reported during selected period</h2>
+        </details>
+    </section>
+    <section class="stat-panel">
+        <h2>Incident reports</h2>
+        <strong class="stat-number"><?= array_sum(array_map('array_sum', $counts)) ?></strong>
+        <p>Reported in selected period</p>
+        <details><summary>Counts by type and status</summary>
     <div class="table-responsive"><table class="table">
         <thead><tr><th>Type</th><?php foreach ($statuses as $status): ?><th><?= h($status) ?></th><?php endforeach; ?><th>Total</th></tr></thead>
         <tbody>
@@ -168,12 +183,19 @@ require __DIR__ . '/includes/header.php';
             <?php endforeach; ?>
         </tbody>
     </table></div>
-    <h2 class="h4 mt-4">Goods distributed during selected period</h2>
-    <p><?= (int)$distributionSummary['receipts'] ?> distributions · <?= (int)$distributionSummary['households'] ?> distinct households served</p>
+        </details>
+    </section>
+    <section class="stat-panel">
+        <h2>Relief distributions</h2>
+        <strong class="stat-number"><?= (int)$distributionSummary['receipts'] ?></strong>
+    <p>Distributions in selected period · <?= (int)$distributionSummary['households'] ?> households served</p>
+    <details><summary>Quantities by good</summary>
     <p>Grouped by good and unit, using the barangay recorded at issue. Older distributions with an unconfirmed barangay appear only under All barangays.</p>
     <?php if ($unconfirmed): ?><p>Municipal distributions with unconfirmed barangay in this period: <?= $unconfirmed ?>.</p><?php endif; ?>
     <?php if (!$goods): ?><p class="empty-state">No goods distributed in this period.</p><?php endif; ?>
     <?php if ($goods): ?><ul class="summary-period-list"><?php foreach ($goods as $row): ?><li><?= h($row['name']) ?> · <?= (int)$row['issued'] ?> <?= h($row['unit']) ?></li><?php endforeach; ?></ul><?php endif; ?>
+    </details></section>
+    </div>
 <?php endif; ?>
 <a class="btn btn-outline-secondary" href="dashboard/staff.php">Return to dashboard</a>
 <?php require __DIR__ . '/includes/footer.php'; ?>

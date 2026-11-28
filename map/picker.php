@@ -45,5 +45,5 @@ $addressField = $pickerKind === 'incidents' ? 'location' : 'address';
 </fieldset>
 <link rel="stylesheet" href="<?= $assetBase ?>/assets/vendor/leaflet/leaflet.css">
 <script src="<?= $assetBase ?>/assets/vendor/leaflet/leaflet.js"></script>
-<script src="<?= $assetBase ?>/assets/js/map.js?v=4"></script>
+<script src="<?= $assetBase ?>/assets/js/map.js?v=5"></script>
 <script src="<?= $assetBase ?>/assets/js/location-picker.js?v=2" defer></script>

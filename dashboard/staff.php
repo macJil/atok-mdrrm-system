@@ -57,6 +57,7 @@ $attention = $pdo->query('SELECT COUNT(*) FROM relief_goods WHERE balance<=minim
         </a>
     <?php endforeach; ?>
 </section>
+<div class="work-overview">
 <section class="dashboard-card" aria-labelledby="pending-reports">
     <h2 class="h4" id="pending-reports">Oldest pending reports</h2>
     <?php if (!$pending): ?><p class="empty-state">No reports awaiting review.</p><?php endif; ?>
@@ -69,10 +70,10 @@ $attention = $pdo->query('SELECT COUNT(*) FROM relief_goods WHERE balance<=minim
     <?php if ($pending): ?><a href="../incidents/index.php?status=Pending&amp;barangay=<?= urlencode($area) ?>">View all pending reports</a><?php endif; ?>
 </section>
 
-<section class="dashboard-card my-3">
+<section class="dashboard-card">
     <h2 class="h4">Incidents reported today</h2>
     <p><?= h($today) ?> · <?= h($area ?: 'All barangays') ?></p>
-    <div class="record-summary">
+    <div class="today-counts">
         <?php foreach (INCIDENT_TYPES as $type): ?>
             <a href="../incidents/index.php?<?= h(http_build_query(['date'=>$today,'barangay'=>$area,'type'=>$type])) ?>">
                 <?= h($type) ?> <strong><?= (int)($typeCounts[$type] ?? 0) ?></strong>
@@ -80,6 +81,7 @@ $attention = $pdo->query('SELECT COUNT(*) FROM relief_goods WHERE balance<=minim
         <?php endforeach; ?>
     </div>
 </section>
+</div>
 <?php if ($attention): ?>
     <p><a href="../relief_inventory/index.php?attention=1">Municipal stock: <?= (int)$attention ?> goods low or out of stock</a> (all barangays)</p>
 <?php endif; ?>
