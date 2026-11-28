@@ -144,7 +144,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .record-marker { display: inline-grid; place-items: center; border-radius: 50%; background: #834118; color: white; border: 2px solid white; box-shadow: 0 0 0 1.5px #172c39; }
 .record-marker svg { width: 74%; height: 74%; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .record-marker--fire { background: #a72e24; }
-.record-marker--flood, .record-marker--center { background: #145581; }
+.record-marker--flood { background: #055fa7; }
+.record-marker--center { background: #005b60; }
+.record-marker--center, .record-marker--closed-center, .record-marker--relief { border-radius: 24%; }
 .record-marker--road, .record-marker--closed-center { background: #43474c; }
 .record-marker--relief { background: #22683b; }
 .record-marker--household, .record-marker--person { background: #684581; }
@@ -163,6 +165,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .today-counts a { display:flex; justify-content:space-between; align-items:center; padding:.45rem .55rem; border-top:1px solid #ccd6da; }
 .dashboard-metrics > a { border-top:4px solid #17655f; text-decoration:none; }
 .dashboard-metrics > a:hover .metric-label { text-decoration:underline; }
-.leaflet-container .record-marker { display:grid; place-items:center; box-shadow:0 0 0 2px #172c39,0 3px 7px #0007; border:3px solid white; }
+.leaflet-container .record-marker { display:grid; place-items:center; box-shadow:0 0 0 2px #142731,0 0 0 5px #ffec89,0 4px 9px 4px #14273177; border:3px solid white; }
 .record-marker svg { stroke-width:2.7; width:80%; height:80%; }
 @media (max-width:767px) { .summary-board,.work-overview {grid-template-columns:minmax(0,1fr);} }

@@ -67,7 +67,7 @@ Open Relief inventory from the staff dashboard. When adding a good, enter its op
 
 ## Page organization
 
-Keep request handling, prepared SQL and the form for a task together. The household form handles both creation and editing, with its validation and SQL above the fields. Share incident ownership checks because details, images, and report copies need identical permissions. Keep multi-page workflows grouped by module; standalone modules use root-level page names such as `accounts.php`, `announcement.php`, `response_teams.php`, `relief_distribution.php` and `summaries.php`. Creation, editing and confirmation screens open only when requested. All modules use the same session checks, header and footer.
+Keep request handling, prepared SQL and the form for a task together. The household form handles both creation and editing, with its validation and SQL above the fields. Share incident ownership checks because details, images, and report copies need identical permissions. Keep multi-page workflows grouped by module; standalone modules use root-level page names such as `accounts.php`, `announcement.php`, `response_teams.php`, `relief_distribution.php`. Creation, editing and confirmation screens open only when requested. All modules use the same session checks, header and footer.
 
 ## Household relief distribution
 

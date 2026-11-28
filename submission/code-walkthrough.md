@@ -11,5 +11,5 @@ The URL opens a PHP page directly. The page checks the session, validates submit
 | 5 · Evacuation | evacuation/index.php, evacuation/view.php | Center registration sets capacity. A locked transaction checks the selected group before inserting individual stays. Checkout sets a departure time. |
 | 6 · Relief | relief_inventory/movements.php, relief_distribution.php | Stock-in adds balance and movement history. Distribution locks the goods, subtracts each quantity and commits the receipt and lines together. |
 | 7 · Notices | announcement.php, index.php, dashboard/resident.php | A staff action sets publication status. Resident and public pages each select only the notices their audience can see. |
-| 8 · Dashboard and summaries | dashboard/staff.php, summaries.php, includes/report_pdf.php | Follow the active-stay count and the inclusive arrival-date filter. Selected totals feed the PDF. |
+| 8 · Dashboard and summaries | dashboard/staff.php, dashboard/report-data.php, includes/report_pdf.php | Follow the active-stay count and the inclusive arrival-date filter. Selected totals feed the PDF. |
 | 9 · Map and weather | map/index.php, map/boundary.php, includes/weather.php, assets/js/weather.js | Role determines the marker query. PHP validates optional coordinates. The dashboard loads the forecast separately and always renders the official advisory link. |
