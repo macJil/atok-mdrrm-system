@@ -7,7 +7,6 @@ require __DIR__ . '/../includes/header.php';
 <h1>Resident dashboard</h1>
 <div class="resident-actions mb-4">
     <a class="btn btn-primary" href="../incidents/add.php">Report an incident</a>
-    <a class="btn btn-outline-secondary" href="../map/index.php">Community map</a>
     <a class="btn btn-outline-secondary" href="../incidents/index.php">All my reports</a>
 </div>
 <section class="content-card p-3 p-md-4 mb-4" aria-labelledby="latest-report">
@@ -47,5 +46,6 @@ $notices = $pdo->query("SELECT title,category,message,published_at FROM announce
 <?php else: ?>
     <p>No published announcements.</p>
 <?php endif; ?>
+<a class="btn btn-outline-secondary" href="../map/index.php">Community map</a>
 <?php require __DIR__ . '/../includes/weather.php'; ?>
 <?php require __DIR__ . '/../includes/footer.php'; ?>

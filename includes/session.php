@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config.php';
 const BARANGAYS = ['Abiang', 'Caliking', 'Cattubo', 'Naguey', 'Paoay', 'Pasdong', 'Poblacion', 'Topdac'];
+const INCIDENT_TYPES = ['Flooding', 'Fire', 'Landslide', 'Road obstruction', 'Other emergency'];
 session_name('ATOKREBUILD');
 ini_set('session.use_strict_mode', '1');
 ini_set('session.use_only_cookies', '1');

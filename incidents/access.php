@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../includes/session.php';
 $user = requireLogin();
 $user = requireRole($user['role']);
-$types = ['Flooding', 'Fire', 'Landslide', 'Road obstruction', 'Other emergency'];
+$types = INCIDENT_TYPES;
 
 function readIncident(PDO $pdo, array $user, int|false|null $id): array
 {

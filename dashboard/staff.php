@@ -12,39 +12,25 @@ $query = $pdo->prepare("SELECT id,incident_type,barangay,reported_at FROM incide
     WHERE status='Pending' AND (?='' OR barangay=?) ORDER BY reported_at,id LIMIT 5");
 $query->execute($args);
 $pending = $query->fetchAll();
-$query = $pdo->prepare("SELECT incident_type,COUNT(*) AS total,
-        SUM(status='Pending') AS pending,SUM(status='Responding') AS responding
-    FROM incidents WHERE (?='' OR barangay=?) GROUP BY incident_type ORDER BY incident_type");
-$query->execute($args);
-$typeCounts = $query->fetchAll();
-$incidentTotal = array_sum(array_column($typeCounts, 'total'));
+$today = $pdo->query('SELECT CURRENT_DATE')->fetchColumn();
+$query = $pdo->prepare("SELECT incident_type,COUNT(*) AS total FROM incidents
+    WHERE reported_at >= ? AND reported_at < DATE_ADD(?, INTERVAL 1 DAY)
+    AND (?='' OR barangay=?) GROUP BY incident_type");
+$query->execute([$today,$today,$area,$area]);
+$typeCounts = $query->fetchAll(PDO::FETCH_KEY_PAIR);
 $query = $pdo->prepare("SELECT COALESCE(SUM(status='Pending'),0) AS pending,
         COALESCE(SUM(status='Responding'),0) AS responding
     FROM incidents WHERE (?='' OR barangay=?)");
 $query->execute($args);
 $incidentStatusTotals = $query->fetch();
-$fireTotal = 0;
-foreach ($typeCounts as $row) {
-    if ($row['incident_type'] === 'Fire') {
-        $fireTotal = (int)$row['total'];
-    }
-}
-$query = $pdo->prepare("SELECT COUNT(DISTINCT c.id) AS centers,COUNT(s.id) AS staying
+$query = $pdo->prepare("SELECT COUNT(s.id)
     FROM evacuation_centers c LEFT JOIN evacuation_stays s ON s.center_id=c.id AND s.left_at IS NULL
     WHERE c.status='Open' AND (?='' OR c.barangay=?)");
 $query->execute($args);
-$centerTotals = $query->fetch();
-$query = $pdo->prepare("SELECT c.id,c.name,c.barangay,c.capacity,COUNT(s.id) AS staying FROM evacuation_centers c
-    LEFT JOIN evacuation_stays s ON s.center_id=c.id AND s.left_at IS NULL
-    WHERE c.status='Open' AND (?='' OR c.barangay=?) GROUP BY c.id ORDER BY c.name LIMIT 5");
-$query->execute($args);
-$centers = $query->fetchAll(PDO::FETCH_ASSOC);
+$staying = (int)$query->fetchColumn();
 $query = $pdo->prepare("SELECT COUNT(*) FROM households WHERE registry_reason IN ('Affected','Monitored and affected') AND (?='' OR barangay=?)");
 $query->execute($args);
 $affected = $query->fetchColumn();
-$query = $pdo->prepare("SELECT COUNT(DISTINCT household_id) FROM relief_distributions WHERE (?='' OR barangay_at_issue=?)");
-$query->execute($args);
-$reliefHouseholds = $query->fetchColumn();
 $attention = $pdo->query('SELECT COUNT(*) FROM relief_goods WHERE balance<=minimum_stock')->fetchColumn();
 ?>
 <form method="get" class="dashboard-filter filter-panel">
@@ -57,66 +43,45 @@ $attention = $pdo->query('SELECT COUNT(*) FROM relief_goods WHERE balance<=minim
     <button class="btn btn-primary">Apply filter</button>
 </form>
 <section class="dashboard-metrics" aria-label="Current operational summary">
-    <div><span class="metric-value"><?= (int)$affected ?></span><span class="metric-label"><a href="../households/index.php?affected=1&amp;barangay=<?= urlencode($area) ?>">Affected households</a></span></div>
-    <div><span class="metric-value"><?= (int)$centerTotals['staying'] ?></span><span class="metric-label">People in open centers</span></div>
-    <div><span class="metric-value"><?= (int)$incidentTotal ?></span><span class="metric-label">All incident reports</span></div>
-    <div><span class="metric-value"><?= $fireTotal ?></span><span class="metric-label">Fire reports</span></div>
-    <div><span class="metric-value"><?= (int)$incidentStatusTotals['pending'] ?></span><span class="metric-label"><a href="../incidents/index.php?status=Pending">Awaiting review</a></span></div>
-    <div><span class="metric-value"><?= (int)$incidentStatusTotals['responding'] ?></span><span class="metric-label"><a href="../incidents/index.php?status=Responding">Under response</a></span></div>
-    <div><span class="metric-value"><?= (int)$reliefHouseholds ?></span><span class="metric-label">Households issued relief</span></div>
-    <div><span class="metric-value"><?= (int)$attention ?></span><span class="metric-label"><a href="../relief_inventory/index.php?attention=1">Low or out-of-stock goods</a></span></div>
+    <?php
+    $areaFilter = urlencode($area);
+    $cards = [
+        ['Pending reports',$incidentStatusTotals['pending'],'../incidents/index.php?status=Pending&barangay='.$areaFilter],
+        ['Incidents being responded to',$incidentStatusTotals['responding'],'../incidents/index.php?status=Responding&barangay='.$areaFilter],
+        ['People staying in centers',$staying,'../summaries.php?barangay='.$areaFilter.'#occupancy'],
+        ['Affected households',$affected,'../households/index.php?affected=1&barangay='.$areaFilter],
+    ];
+    foreach ($cards as [$label,$value,$url]): ?>
+        <a class="dashboard-card" href="<?= h($url) ?>">
+            <strong class="metric-value"><?= (int)$value ?></strong><span class="metric-label"><?= h($label) ?></span>
+        </a>
+    <?php endforeach; ?>
 </section>
-<section class="dashboard-card mb-3" aria-labelledby="incident-totals">
-    <h2 class="h4" id="incident-totals">Incident reports by type</h2>
-    <p class="metric-label">All recorded reports · <?= h($area ?: 'All barangays') ?></p>
-    <?php if (!$typeCounts): ?><p class="empty-state">No incident reports recorded for this selection.</p><?php else: ?>
-        <div class="record-summary">
-            <?php foreach ($typeCounts as $row): ?>
-                <div>
-                    <a href="../incidents/index.php?<?= h(http_build_query(['type'=>$row['incident_type'],'barangay'=>$area])) ?>">
-                        <strong><?= h($row['incident_type']) ?></strong>
-                    </a>
-                    <span class="metric-value"><?= (int)$row['total'] ?></span>
-                    <span class="metric-label"><?= (int)$row['pending'] ?> pending · <?= (int)$row['responding'] ?> responding</span>
-                </div>
-            <?php endforeach; ?>
+<section class="dashboard-card" aria-labelledby="pending-reports">
+    <h2 class="h4" id="pending-reports">Oldest pending reports</h2>
+    <?php if (!$pending): ?><p class="empty-state">No reports awaiting review.</p><?php endif; ?>
+    <?php foreach ($pending as $row): ?>
+        <div class="dashboard-row">
+            <p><?= h($row['reported_at'].' · '.$row['incident_type'].' · '.($row['barangay'] ?? 'Awaiting confirmation')) ?></p>
+            <a class="btn btn-primary btn-sm" href="../incidents/view.php?id=<?= (int)$row['id'] ?>">Review report</a>
         </div>
-    <?php endif; ?>
+    <?php endforeach; ?>
+    <?php if ($pending): ?><a href="../incidents/index.php?status=Pending&amp;barangay=<?= urlencode($area) ?>">View all pending reports</a><?php endif; ?>
 </section>
-<div class="dashboard-grid">
-    <section class="dashboard-card" aria-labelledby="pending-reports">
-        <h2 class="h4" id="pending-reports">Oldest pending reports</h2>
-        <?php if (!$pending): ?><p class="empty-state">No reports awaiting review.</p><?php endif; ?>
-        <?php foreach ($pending as $row): ?>
-            <div class="dashboard-row">
-                <p><?= h($row['reported_at'].' · '.$row['incident_type'].' · '.($row['barangay'] ?? 'Awaiting confirmation')) ?></p>
-                <a class="btn btn-primary btn-sm" href="../incidents/view.php?id=<?= (int)$row['id'] ?>">Review report</a>
-            </div>
-        <?php endforeach; ?>
-        <?php if ($pending): ?><a href="../incidents/index.php?status=Pending">View all incident reports</a><?php endif; ?>
-    </section>
 
-    <section class="dashboard-card dashboard-card--wide" aria-labelledby="open-centers">
-        <h2 class="h4" id="open-centers">Open evacuation centers</h2>
-        <p><?= (int)$centerTotals['centers'] ?> open centers · <?= (int)$centerTotals['staying'] ?> people staying · showing up to five centers</p>
-        <?php if (!$centers): ?><p class="empty-state">No open centers in this selection.</p><?php endif; ?>
-        <?php foreach ($centers as $center): ?>
-            <?php $occupancy = max(0, min(100, (int)round(100 * (int)$center['staying'] / max(1, (int)$center['capacity'])))); ?>
-            <div class="dashboard-row">
-                <div class="flex-grow-1 w-100">
-                    <p><a href="../evacuation/view.php?id=<?= (int)$center['id'] ?>&amp;tab=current"><?= h($center['name']) ?></a>
-                        <span class="text-secondary">· <?= h($center['barangay']) ?></span>
-                    </p>
-                    <div class="progress mt-2" role="progressbar" aria-label="<?= h($center['name']) ?> occupancy" aria-valuenow="<?= $occupancy ?>" aria-valuemin="0" aria-valuemax="100">
-                        <div class="progress-bar bg-success" style="width: <?= $occupancy ?>%"></div>
-                    </div>
-                </div>
-                <strong><?= (int)$center['staying'] ?> / <?= (int)$center['capacity'] ?></strong>
-            </div>
+<section class="dashboard-card my-3">
+    <h2 class="h4">Incidents reported today</h2>
+    <p><?= h($today) ?> · <?= h($area ?: 'All barangays') ?></p>
+    <div class="record-summary">
+        <?php foreach (INCIDENT_TYPES as $type): ?>
+            <a href="../incidents/index.php?<?= h(http_build_query(['date'=>$today,'barangay'=>$area,'type'=>$type])) ?>">
+                <?= h($type) ?> <strong><?= (int)($typeCounts[$type] ?? 0) ?></strong>
+            </a>
         <?php endforeach; ?>
-        <?php if ((int)$centerTotals['centers'] > count($centers)): ?><a href="../evacuation/index.php">View all evacuation centers</a><?php endif; ?>
-    </section>
-
-</div>
+    </div>
+</section>
+<?php if ($attention): ?>
+    <p><a href="../relief_inventory/index.php?attention=1">Municipal stock: <?= (int)$attention ?> goods low or out of stock</a> (all barangays)</p>
+<?php endif; ?>
 <?php require __DIR__ . '/../includes/weather.php'; ?>
 <?php require __DIR__ . '/../includes/footer.php'; ?>

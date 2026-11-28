@@ -41,7 +41,7 @@ Back up the existing database, select it in phpMyAdmin, and apply the scripts fo
 | Print and history fixes `9bd5976` | `database/upgrade-map-stock-history.sql`, `database/upgrade-auth-security.sql`, `database/upgrade-summary-date-indexes.sql` |
 | Current full SQL import or an installation already upgraded to `ae1ee7c` | No upgrade scripts needed for this branch |
 
-After upgrading a copy, sign in and open the disaster summary. Its printable PDF contains aggregate figures. Individual case and receipt details remain available on the staff screen.
+After upgrading a copy, sign in and open the disaster summary. Its printable PDF contains aggregate figures. Staff can open case and receipt details in their respective modules.
 
 ## Household registry
 
@@ -81,7 +81,7 @@ From the staff dashboard choose Manage announcements. Save a draft or publish a 
 
 Open Manage relief points to edit an existing point or mark it inactive. Existing records keep their written locations and start without pins. Household details now include deletion confirmation. Incident details also serve their print copy; image access is a separate binary response. The map legend uses compact text codes and wraps for narrow screens; Show all mapped locations fits the current pins without replacing Show all Atok.
 
-The staff dashboard starts with five pending reports in oldest-first order and shows incident totals by type, including fire. Barangay selection applies to incident totals, centers and affected households. Goods needing attention always use the municipal stock balance. Disaster summaries include current affected-household classifications and individual household records, center capacity and occupancy, period arrivals, individual incident details, distribution receipts with itemized goods, unique households served by location, and goods issued. Summary dates apply to incident reporting, evacuation arrivals and distributions; household registry status and people staying now describe current records. The screen and office PDF include the same detailed incident, household and distribution records.
+The four dashboard cards show current workload. Today's incident-type counts and the pending queue open the matching records for the selected barangay. Municipal stock warnings apply to all barangays. The summary screen and printable PDF show current affected households, center occupancy and period arrivals, period incident totals by type and status, and period relief totals by good and unit. The map legend switches layers; a numbered badge opens a list of the visible records at the same coordinates.
 
 Account deactivation is confirmed and preserves the account and its references. Announcements are withdrawn rather than deleted. Marking an enrolled household member inactive also deactivates the linked sign-in account while retaining household, evacuation-stay and distribution history; reactivating a member does not restore account access. Incident and summary PDFs use black-and-white office styling with blank signature fields; they do not imply approval or invent signatories.
 
